@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
 import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
+import { exportToCSV, exportToExcel, guestsExportColumns } from '@/lib/exportUtils';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
@@ -151,6 +152,8 @@ const Guests = () => {
           onFilterChange={setFilter}
           onClearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
+          onExportCSV={() => exportToCSV(filteredData || [], guestsExportColumns, 'clients')}
+          onExportExcel={() => exportToExcel(filteredData || [], guestsExportColumns, 'clients')}
         />
         <Button variant="gold" className="gap-2" onClick={handleAddGuest}>
           <Plus className="h-4 w-4" />

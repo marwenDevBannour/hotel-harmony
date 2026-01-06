@@ -479,6 +479,8 @@ const Restaurant = () => {
               onFilterChange={setTableFilter}
               onClearFilters={clearTableFilters}
               hasActiveFilters={hasTableFilters}
+              onExportCSV={() => exportToCSV(filteredTables || [], tablesExportColumns, 'tables')}
+              onExportExcel={() => exportToExcel(filteredTables || [], tablesExportColumns, 'tables')}
             />
             <Button variant="gold" className="gap-2" onClick={() => { setSelectedTable(null); setTableModalOpen(true); }}>
               <Plus className="h-4 w-4" />
@@ -531,6 +533,8 @@ const Restaurant = () => {
               onFilterChange={setOrderFilter}
               onClearFilters={clearOrderFilters}
               hasActiveFilters={hasOrderFilters}
+              onExportCSV={() => exportToCSV(filteredOrders || [], ordersExportColumns, 'commandes')}
+              onExportExcel={() => exportToExcel(filteredOrders || [], ordersExportColumns, 'commandes')}
             />
             <Button variant="gold" className="gap-2" onClick={handleRoomService}>
               <Plus className="h-4 w-4" />
@@ -587,6 +591,8 @@ const Restaurant = () => {
               onFilterChange={setMenuFilter}
               onClearFilters={clearMenuFilters}
               hasActiveFilters={hasMenuFilters}
+              onExportCSV={() => exportToCSV(filteredMenu || [], menuItemsExportColumns, 'menu')}
+              onExportExcel={() => exportToExcel(filteredMenu || [], menuItemsExportColumns, 'menu')}
             />
             <Button variant="gold" className="gap-2" onClick={() => { setSelectedMenuItem(null); setMenuModalOpen(true); }}>
               <Plus className="h-4 w-4" />

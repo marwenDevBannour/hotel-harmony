@@ -178,6 +178,8 @@ const Reservations = () => {
           onFilterChange={setFilter}
           onClearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
+          onExportCSV={() => exportToCSV(filteredData || [], reservationsExportColumns, 'reservations')}
+          onExportExcel={() => exportToExcel(filteredData || [], reservationsExportColumns, 'reservations')}
         />
         <Button variant="gold" className="gap-2" onClick={handleAddReservation}>
           <Plus className="h-4 w-4" />
