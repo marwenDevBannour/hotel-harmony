@@ -2,14 +2,13 @@ import MainLayout from '@/components/layout/MainLayout';
 import { useRooms, Room, RoomStatus, RoomType } from '@/hooks/useRooms';
 import { RoomFormModal } from '@/components/rooms/RoomFormModal';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
+import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
 import { cn } from '@/lib/utils';
 import { 
   BedDouble, 
   Plus, 
-  Search, 
-  Filter,
   Wifi,
   Tv,
   Wine,
@@ -17,7 +16,7 @@ import {
   Sparkles,
   Pencil
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 const statusConfig: Record<RoomStatus, { 
   label: string; 
@@ -155,13 +154,48 @@ const RoomCard = ({ room, onEdit }: { room: Room; onEdit: (room: Room) => void }
 
 const Rooms = () => {
   const { data: rooms, isLoading } = useRooms();
-  const [filter, setFilter] = useState<RoomStatus | 'all'>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
-  const filteredRooms = filter === 'all' 
-    ? rooms 
-    : rooms?.filter(r => r.status === filter);
+  // Get unique floors for filter
+  const floorOptions = useMemo(() => {
+    if (!rooms) return [];
+    const floors = [...new Set(rooms.map(r => r.floor))].sort((a, b) => a - b);
+    return floors.map(f => ({ value: String(f), label: `Étage ${f}` }));
+  }, [rooms]);
+
+  const filters: FilterConfig[] = [
+    {
+      key: 'status',
+      label: 'Statut',
+      options: Object.entries(statusConfig).map(([value, { label }]) => ({ value, label })),
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      options: Object.entries(typeLabels).map(([value, label]) => ({ value, label })),
+    },
+    {
+      key: 'floor',
+      label: 'Étage',
+      options: floorOptions,
+    },
+  ];
+
+  const {
+    filteredData,
+    searchQuery,
+    setSearchQuery,
+    activeFilters,
+    setFilter,
+    clearFilters,
+    hasActiveFilters,
+  } = useSearchFilter({
+    data: rooms,
+    searchFields: ['number', 'type', 'description'],
+    filters,
+    persistInUrl: true,
+  });
 
   const statusCounts = rooms?.reduce((acc, room) => {
     acc[room.status] = (acc[room.status] || 0) + 1;
@@ -182,19 +216,16 @@ const Rooms = () => {
     <MainLayout title="Gestion des Chambres" subtitle="Gérez l'inventaire et l'état des chambres">
       {/* Header Actions */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Rechercher une chambre..." 
-              className="w-64 pl-10"
-            />
-          </div>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filtres
-          </Button>
-        </div>
+        <SearchFilterBar
+          searchPlaceholder="Rechercher une chambre..."
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          activeFilters={activeFilters}
+          onFilterChange={setFilter}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
         <Button variant="gold" className="gap-2" onClick={handleAddRoom}>
           <Plus className="h-4 w-4" />
           Ajouter une Chambre
@@ -204,10 +235,10 @@ const Rooms = () => {
       {/* Status Filter Pills */}
       <div className="mb-6 flex flex-wrap gap-2">
         <button
-          onClick={() => setFilter('all')}
+          onClick={() => setFilter('status', 'all')}
           className={cn(
             "rounded-full px-4 py-2 text-sm font-medium transition-all",
-            filter === 'all' 
+            (!activeFilters.status || activeFilters.status === 'all')
               ? "bg-primary text-primary-foreground shadow-sm" 
               : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
           )}
@@ -217,10 +248,10 @@ const Rooms = () => {
         {Object.entries(statusConfig).map(([status, config]) => (
           <button
             key={status}
-            onClick={() => setFilter(status as RoomStatus)}
+            onClick={() => setFilter('status', status)}
             className={cn(
               "rounded-full px-4 py-2 text-sm font-medium transition-all",
-              filter === status 
+              activeFilters.status === status 
                 ? cn(config.bgColor, config.color, "shadow-sm") 
                 : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
             )}
@@ -239,7 +270,7 @@ const Rooms = () => {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredRooms?.map((room, index) => (
+          {filteredData?.map((room, index) => (
             <div 
               key={room.id} 
               className="animate-slide-up"
@@ -251,10 +282,15 @@ const Rooms = () => {
         </div>
       )}
 
-      {!isLoading && filteredRooms?.length === 0 && (
+      {!isLoading && filteredData?.length === 0 && (
         <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
           <BedDouble className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium text-muted-foreground">Aucune chambre trouvée</p>
+          {hasActiveFilters && (
+            <Button variant="link" onClick={clearFilters} className="mt-2">
+              Effacer les filtres
+            </Button>
+          )}
         </div>
       )}
 
