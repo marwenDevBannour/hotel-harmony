@@ -36,6 +36,7 @@ import {
 import { useState } from 'react';
 import TableFormModal from '@/components/restaurant/TableFormModal';
 import MenuItemFormModal from '@/components/restaurant/MenuItemFormModal';
+import { OrderFormModal } from '@/components/restaurant/OrderFormModal';
 
 const tableStatusConfig: Record<TableStatus, { 
   label: string; 
@@ -83,7 +84,7 @@ const locationLabels = {
 };
 
 // Table Card Component
-const TableCard = ({ table }: { table: RestaurantTable }) => {
+const TableCard = ({ table, onNewOrder }: { table: RestaurantTable; onNewOrder: (table: RestaurantTable) => void }) => {
   const status = tableStatusConfig[table.status];
 
   return (
@@ -106,7 +107,12 @@ const TableCard = ({ table }: { table: RestaurantTable }) => {
         <span>{locationLabels[table.location]}</span>
       </div>
       {table.status === 'available' && (
-        <Button variant="gold" size="sm" className="mt-3 w-full">
+        <Button 
+          variant="gold" 
+          size="sm" 
+          className="mt-3 w-full"
+          onClick={() => onNewOrder(table)}
+        >
           Nouvelle Commande
         </Button>
       )}
@@ -240,8 +246,20 @@ const Restaurant = () => {
 
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const [menuModalOpen, setMenuModalOpen] = useState(false);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
+  const [orderPreselectedTable, setOrderPreselectedTable] = useState<RestaurantTable | null>(null);
+
+  const handleNewOrder = (table: RestaurantTable) => {
+    setOrderPreselectedTable(table);
+    setOrderModalOpen(true);
+  };
+
+  const handleRoomService = () => {
+    setOrderPreselectedTable(null);
+    setOrderModalOpen(true);
+  };
 
   return (
     <MainLayout title="Restaurant" subtitle="Gestion des tables, commandes et menu">
@@ -327,7 +345,7 @@ const Restaurant = () => {
                   className="animate-slide-up"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
-                  <TableCard table={table} />
+                  <TableCard table={table} onNewOrder={handleNewOrder} />
                 </div>
               ))}
             </div>
@@ -350,7 +368,7 @@ const Restaurant = () => {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input placeholder="Rechercher..." className="w-48 pl-10" />
               </div>
-              <Button variant="gold" className="gap-2">
+              <Button variant="gold" className="gap-2" onClick={handleRoomService}>
                 <Plus className="h-4 w-4" />
                 Room Service
               </Button>
@@ -451,6 +469,12 @@ const Restaurant = () => {
         open={menuModalOpen}
         onOpenChange={setMenuModalOpen}
         menuItem={selectedMenuItem}
+      />
+
+      <OrderFormModal
+        open={orderModalOpen}
+        onOpenChange={setOrderModalOpen}
+        preselectedTable={orderPreselectedTable}
       />
     </MainLayout>
   );
