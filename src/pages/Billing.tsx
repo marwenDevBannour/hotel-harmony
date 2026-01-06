@@ -2,9 +2,10 @@ import MainLayout from '@/components/layout/MainLayout';
 import { useInvoices, useInvoiceStats, Invoice, InvoiceStatus } from '@/hooks/useInvoices';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
-import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
 import { cn } from '@/lib/utils';
+import { exportToCSV, exportToExcel, invoicesExportColumns } from '@/lib/exportUtils';
+import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
+import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
 import { 
   Plus, 
   FileText,

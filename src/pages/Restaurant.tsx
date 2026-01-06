@@ -14,15 +14,14 @@ import {
 } from '@/hooks/useRestaurant';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
-import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
 import { cn } from '@/lib/utils';
+import { exportToCSV, exportToExcel, ordersExportColumns, menuItemsExportColumns, tablesExportColumns } from '@/lib/exportUtils';
+import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
+import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
 import { 
   Plus, 
-  Search,
   Utensils,
   Users,
   Clock,
@@ -36,7 +35,7 @@ import {
   BedDouble,
   MapPin,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import TableFormModal from '@/components/restaurant/TableFormModal';
 import MenuItemFormModal from '@/components/restaurant/MenuItemFormModal';
 import { OrderFormModal } from '@/components/restaurant/OrderFormModal';
