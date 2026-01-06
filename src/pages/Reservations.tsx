@@ -1,5 +1,6 @@
 import MainLayout from '@/components/layout/MainLayout';
 import { useReservations, Reservation, ReservationStatus } from '@/hooks/useReservations';
+import { ReservationFormModal } from '@/components/reservations/ReservationFormModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +12,7 @@ import {
   Calendar,
   User,
   CreditCard,
-  MoreVertical,
+  Pencil,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -31,7 +32,7 @@ const sourceConfig = {
   phone: { label: 'Téléphone', className: 'bg-green-100 text-green-700' },
 };
 
-const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
+const ReservationCard = ({ reservation, onEdit }: { reservation: Reservation; onEdit: (r: Reservation) => void }) => {
   const status = statusConfig[reservation.status];
   const source = sourceConfig[reservation.source];
   const balance = Number(reservation.total_amount) - Number(reservation.paid_amount);
@@ -41,7 +42,6 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
 
   return (
     <div className="card-elevated card-hover overflow-hidden">
-      {/* Header */}
       <div className="flex items-start justify-between border-b border-border p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold/10">
@@ -55,21 +55,16 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn(
-            "rounded-full border px-3 py-1 text-xs font-medium",
-            status.className
-          )}>
+          <span className={cn("rounded-full border px-3 py-1 text-xs font-medium", status.className)}>
             {status.label}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreVertical className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(reservation)}>
+            <Pencil className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Body */}
       <div className="p-4">
-        {/* Room & Dates */}
         <div className="mb-4 grid grid-cols-3 gap-4">
           <div className="rounded-lg bg-secondary p-3 text-center">
             <p className="text-xs text-muted-foreground">Chambre</p>
@@ -85,7 +80,6 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
           </div>
         </div>
 
-        {/* Details */}
         <div className="mb-4 flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
             {reservation.adults} adulte{reservation.adults > 1 ? 's' : ''}
@@ -97,7 +91,6 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
           </span>
         </div>
 
-        {/* Special Requests */}
         {reservation.special_requests && (
           <div className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             <p className="font-medium">Note:</p>
@@ -105,7 +98,6 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
           </div>
         )}
 
-        {/* Payment & Actions */}
         <div className="flex items-center justify-between border-t border-border pt-4">
           <div>
             <p className="text-sm text-muted-foreground">Montant total</p>
@@ -124,9 +116,6 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
             {reservation.status === 'checked_in' && (
               <Button variant="outline" size="sm">Check-out</Button>
             )}
-            <Button variant="outline" size="sm">
-              Modifier
-            </Button>
           </div>
         </div>
       </div>
@@ -137,22 +126,30 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
 const Reservations = () => {
   const { data: reservations, isLoading } = useReservations();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
 
   const filteredReservations = statusFilter === 'all'
     ? reservations
     : reservations?.filter(r => r.status === statusFilter);
 
+  const handleAddReservation = () => {
+    setSelectedReservation(null);
+    setModalOpen(true);
+  };
+
+  const handleEditReservation = (reservation: Reservation) => {
+    setSelectedReservation(reservation);
+    setModalOpen(true);
+  };
+
   return (
     <MainLayout title="Réservations" subtitle="Gérez toutes les réservations de l'établissement">
-      {/* Header Actions */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Rechercher un client..." 
-              className="w-64 pl-10"
-            />
+            <Input placeholder="Rechercher un client..." className="w-64 pl-10" />
           </div>
           <Button variant="outline" className="gap-2">
             <Calendar className="h-4 w-4" />
@@ -163,13 +160,12 @@ const Reservations = () => {
             Filtres
           </Button>
         </div>
-        <Button variant="gold" className="gap-2">
+        <Button variant="gold" className="gap-2" onClick={handleAddReservation}>
           <Plus className="h-4 w-4" />
           Nouvelle Réservation
         </Button>
       </div>
 
-      {/* Status Filter */}
       <div className="mb-6 flex flex-wrap gap-2">
         <button
           onClick={() => setStatusFilter('all')}
@@ -201,7 +197,6 @@ const Reservations = () => {
         })}
       </div>
 
-      {/* Reservations Grid */}
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {[...Array(6)].map((_, i) => (
@@ -211,12 +206,8 @@ const Reservations = () => {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredReservations?.map((reservation, index) => (
-            <div 
-              key={reservation.id}
-              className="animate-slide-up"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <ReservationCard reservation={reservation} />
+            <div key={reservation.id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+              <ReservationCard reservation={reservation} onEdit={handleEditReservation} />
             </div>
           ))}
         </div>
@@ -228,6 +219,8 @@ const Reservations = () => {
           <p className="text-lg font-medium text-muted-foreground">Aucune réservation trouvée</p>
         </div>
       )}
+
+      <ReservationFormModal open={modalOpen} onOpenChange={setModalOpen} reservation={selectedReservation} />
     </MainLayout>
   );
 };
