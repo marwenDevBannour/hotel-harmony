@@ -2,13 +2,12 @@ import MainLayout from '@/components/layout/MainLayout';
 import { useReservations, Reservation, ReservationStatus } from '@/hooks/useReservations';
 import { ReservationFormModal } from '@/components/reservations/ReservationFormModal';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
+import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
-  Search, 
-  Filter,
   Calendar,
   User,
   CreditCard,
@@ -125,13 +124,36 @@ const ReservationCard = ({ reservation, onEdit }: { reservation: Reservation; on
 
 const Reservations = () => {
   const { data: reservations, isLoading } = useReservations();
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
 
-  const filteredReservations = statusFilter === 'all'
-    ? reservations
-    : reservations?.filter(r => r.status === statusFilter);
+  const filters: FilterConfig[] = [
+    {
+      key: 'status',
+      label: 'Statut',
+      options: Object.entries(statusConfig).map(([value, { label }]) => ({ value, label })),
+    },
+    {
+      key: 'source',
+      label: 'Source',
+      options: Object.entries(sourceConfig).map(([value, { label }]) => ({ value, label })),
+    },
+  ];
+
+  const {
+    filteredData,
+    searchQuery,
+    setSearchQuery,
+    activeFilters,
+    setFilter,
+    clearFilters,
+    hasActiveFilters,
+  } = useSearchFilter({
+    data: reservations,
+    searchFields: ['reservation_number', 'guest.first_name', 'guest.last_name', 'room.number'],
+    filters,
+    persistInUrl: true,
+  });
 
   const handleAddReservation = () => {
     setSelectedReservation(null);
@@ -146,20 +168,16 @@ const Reservations = () => {
   return (
     <MainLayout title="Réservations" subtitle="Gérez toutes les réservations de l'établissement">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Rechercher un client..." className="w-64 pl-10" />
-          </div>
-          <Button variant="outline" className="gap-2">
-            <Calendar className="h-4 w-4" />
-            Dates
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filtres
-          </Button>
-        </div>
+        <SearchFilterBar
+          searchPlaceholder="Rechercher client, réf..."
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          activeFilters={activeFilters}
+          onFilterChange={setFilter}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
         <Button variant="gold" className="gap-2" onClick={handleAddReservation}>
           <Plus className="h-4 w-4" />
           Nouvelle Réservation
@@ -168,10 +186,10 @@ const Reservations = () => {
 
       <div className="mb-6 flex flex-wrap gap-2">
         <button
-          onClick={() => setStatusFilter('all')}
+          onClick={() => setFilter('status', 'all')}
           className={cn(
             "rounded-full px-4 py-2 text-sm font-medium transition-all",
-            statusFilter === 'all' 
+            (!activeFilters.status || activeFilters.status === 'all')
               ? "bg-primary text-primary-foreground shadow-sm" 
               : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
           )}
@@ -183,10 +201,10 @@ const Reservations = () => {
           return (
             <button
               key={status}
-              onClick={() => setStatusFilter(status)}
+              onClick={() => setFilter('status', status)}
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-medium transition-all",
-                statusFilter === status 
+                activeFilters.status === status 
                   ? cn(config.className, "shadow-sm") 
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               )}
@@ -205,7 +223,7 @@ const Reservations = () => {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {filteredReservations?.map((reservation, index) => (
+          {filteredData?.map((reservation, index) => (
             <div key={reservation.id} className="animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
               <ReservationCard reservation={reservation} onEdit={handleEditReservation} />
             </div>
@@ -213,10 +231,15 @@ const Reservations = () => {
         </div>
       )}
 
-      {!isLoading && filteredReservations?.length === 0 && (
+      {!isLoading && filteredData?.length === 0 && (
         <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
           <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium text-muted-foreground">Aucune réservation trouvée</p>
+          {hasActiveFilters && (
+            <Button variant="link" onClick={clearFilters} className="mt-2">
+              Effacer les filtres
+            </Button>
+          )}
         </div>
       )}
 

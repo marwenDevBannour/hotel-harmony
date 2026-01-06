@@ -1,16 +1,14 @@
 import MainLayout from '@/components/layout/MainLayout';
 import { useInvoices, useInvoiceStats, Invoice, InvoiceStatus } from '@/hooks/useInvoices';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
+import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
-  Search, 
-  Filter,
   FileText,
   CreditCard,
-  MoreVertical,
   Download,
   CheckCircle,
   Clock,
@@ -171,14 +169,37 @@ const InvoiceCard = ({
 const Billing = () => {
   const { data: invoices, isLoading } = useInvoices();
   const { data: stats, isLoading: statsLoading } = useInvoiceStats();
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  const filteredInvoices = statusFilter === 'all'
-    ? invoices
-    : invoices?.filter(i => i.status === statusFilter);
+  const filters: FilterConfig[] = [
+    {
+      key: 'status',
+      label: 'Statut',
+      options: Object.entries(statusConfig).map(([value, { label }]) => ({ value, label })),
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      options: Object.entries(typeLabels).map(([value, label]) => ({ value, label })),
+    },
+  ];
+
+  const {
+    filteredData,
+    searchQuery,
+    setSearchQuery,
+    activeFilters,
+    setFilter,
+    clearFilters,
+    hasActiveFilters,
+  } = useSearchFilter({
+    data: invoices,
+    searchFields: ['invoice_number', 'guest.first_name', 'guest.last_name', 'reservation.reservation_number'],
+    filters,
+    persistInUrl: true,
+  });
 
   const handleEdit = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -199,19 +220,16 @@ const Billing = () => {
     <MainLayout title="Facturation" subtitle="Gestion des factures et paiements">
       {/* Header Actions */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Rechercher une facture..." 
-              className="w-64 pl-10"
-            />
-          </div>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filtres
-          </Button>
-        </div>
+        <SearchFilterBar
+          searchPlaceholder="Rechercher une facture..."
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          activeFilters={activeFilters}
+          onFilterChange={setFilter}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
         <Button variant="gold" className="gap-2" onClick={handleNewInvoice}>
           <Plus className="h-4 w-4" />
           Nouvelle Facture
@@ -257,10 +275,10 @@ const Billing = () => {
       {/* Status Filter */}
       <div className="mb-6 flex flex-wrap gap-2">
         <button
-          onClick={() => setStatusFilter('all')}
+          onClick={() => setFilter('status', 'all')}
           className={cn(
             "rounded-full px-4 py-2 text-sm font-medium transition-all",
-            statusFilter === 'all' 
+            (!activeFilters.status || activeFilters.status === 'all')
               ? "bg-primary text-primary-foreground shadow-sm" 
               : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
           )}
@@ -272,10 +290,10 @@ const Billing = () => {
           return (
             <button
               key={status}
-              onClick={() => setStatusFilter(status)}
+              onClick={() => setFilter('status', status)}
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-medium transition-all",
-                statusFilter === status 
+                activeFilters.status === status 
                   ? cn(config.className, "shadow-sm") 
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               )}
@@ -295,7 +313,7 @@ const Billing = () => {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {filteredInvoices?.map((invoice, index) => (
+          {filteredData?.map((invoice, index) => (
             <div 
               key={invoice.id}
               className="animate-slide-up"
@@ -307,10 +325,15 @@ const Billing = () => {
         </div>
       )}
 
-      {!isLoading && filteredInvoices?.length === 0 && (
+      {!isLoading && filteredData?.length === 0 && (
         <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
           <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium text-muted-foreground">Aucune facture trouvée</p>
+          {hasActiveFilters && (
+            <Button variant="link" onClick={clearFilters} className="mt-2">
+              Effacer les filtres
+            </Button>
+          )}
         </div>
       )}
 

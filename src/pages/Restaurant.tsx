@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
+import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
@@ -33,9 +35,8 @@ import {
   MoreVertical,
   BedDouble,
   MapPin,
-  Edit,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import TableFormModal from '@/components/restaurant/TableFormModal';
 import MenuItemFormModal from '@/components/restaurant/MenuItemFormModal';
 import { OrderFormModal } from '@/components/restaurant/OrderFormModal';
@@ -79,7 +80,7 @@ const categoryLabels: Record<MenuCategory, string> = {
   'apéritif': 'Apéritifs',
 };
 
-const locationLabels = {
+const locationLabels: Record<string, string> = {
   'intérieur': 'Intérieur',
   'terrasse': 'Terrasse',
   'privé': 'Salon Privé',
@@ -106,7 +107,7 @@ const TableCard = ({ table, onNewOrder }: { table: RestaurantTable; onNewOrder: 
         <span>{table.capacity} pers.</span>
         <span>•</span>
         <MapPin className="h-3 w-3" />
-        <span>{locationLabels[table.location]}</span>
+        <span>{locationLabels[table.location] || table.location}</span>
       </div>
       {table.status === 'available' && (
         <Button 
@@ -192,26 +193,22 @@ const OrderCard = ({ order, onStatusChange, isUpdating }: {
       </div>
 
       <div className="p-4">
-        {/* Guest */}
         {order.guest && (
           <p className="mb-2 text-sm">
             Client: <span className="font-medium">{order.guest.first_name} {order.guest.last_name}</span>
           </p>
         )}
 
-        {/* Time */}
         <div className="mb-3 flex items-center gap-1 text-sm text-muted-foreground">
           <Clock className="h-3 w-3" />
           <span>{new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
 
-        {/* Items count */}
         <div className="mb-3 rounded-lg bg-secondary p-2 text-center">
           <p className="text-xs text-muted-foreground">Articles</p>
           <p className="font-semibold">{order.items?.length || 0}</p>
         </div>
 
-        {/* Total & Actions */}
         <div className="flex items-center justify-between border-t border-border pt-3">
           <div>
             <p className="text-sm text-muted-foreground">Total</p>
@@ -285,6 +282,97 @@ const Restaurant = () => {
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
   const [orderPreselectedTable, setOrderPreselectedTable] = useState<RestaurantTable | null>(null);
+
+  // Table filters
+  const tableFilters: FilterConfig[] = [
+    {
+      key: 'status',
+      label: 'Statut',
+      options: Object.entries(tableStatusConfig).map(([value, { label }]) => ({ value, label })),
+    },
+    {
+      key: 'location',
+      label: 'Emplacement',
+      options: Object.entries(locationLabels).map(([value, label]) => ({ value, label })),
+    },
+  ];
+
+  const {
+    filteredData: filteredTables,
+    searchQuery: tableSearch,
+    setSearchQuery: setTableSearch,
+    activeFilters: tableActiveFilters,
+    setFilter: setTableFilter,
+    clearFilters: clearTableFilters,
+    hasActiveFilters: hasTableFilters,
+  } = useSearchFilter({
+    data: tables,
+    searchFields: ['number'],
+    filters: tableFilters,
+  });
+
+  // Order filters
+  const orderFilters: FilterConfig[] = [
+    {
+      key: 'status',
+      label: 'Statut',
+      options: Object.entries(orderStatusConfig).map(([value, { label }]) => ({ value, label })),
+    },
+    {
+      key: 'order_type',
+      label: 'Type',
+      options: [
+        { value: 'dine_in', label: 'Sur place' },
+        { value: 'room_service', label: 'Room Service' },
+        { value: 'takeaway', label: 'À emporter' },
+      ],
+    },
+  ];
+
+  const {
+    filteredData: filteredOrders,
+    searchQuery: orderSearch,
+    setSearchQuery: setOrderSearch,
+    activeFilters: orderActiveFilters,
+    setFilter: setOrderFilter,
+    clearFilters: clearOrderFilters,
+    hasActiveFilters: hasOrderFilters,
+  } = useSearchFilter({
+    data: activeOrders,
+    searchFields: ['order_number', 'guest.first_name', 'guest.last_name', 'table.number', 'room.number'],
+    filters: orderFilters,
+  });
+
+  // Menu filters
+  const menuFilters: FilterConfig[] = [
+    {
+      key: 'category',
+      label: 'Catégorie',
+      options: Object.entries(categoryLabels).map(([value, label]) => ({ value, label })),
+    },
+    {
+      key: 'available',
+      label: 'Disponibilité',
+      options: [
+        { value: 'true', label: 'Disponible' },
+        { value: 'false', label: 'Indisponible' },
+      ],
+    },
+  ];
+
+  const {
+    filteredData: filteredMenu,
+    searchQuery: menuSearch,
+    setSearchQuery: setMenuSearch,
+    activeFilters: menuActiveFilters,
+    setFilter: setMenuFilter,
+    clearFilters: clearMenuFilters,
+    hasActiveFilters: hasMenuFilters,
+  } = useSearchFilter({
+    data: menuItems,
+    searchFields: ['name', 'description'],
+    filters: menuFilters,
+  });
 
   const handleNewOrder = (table: RestaurantTable) => {
     setOrderPreselectedTable(table);
@@ -382,8 +470,17 @@ const Restaurant = () => {
 
         {/* Tables Tab */}
         <TabsContent value="tables">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-xl font-semibold">Plan des Tables</h3>
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <SearchFilterBar
+              searchPlaceholder="Rechercher une table..."
+              searchQuery={tableSearch}
+              onSearchChange={setTableSearch}
+              filters={tableFilters}
+              activeFilters={tableActiveFilters}
+              onFilterChange={setTableFilter}
+              onClearFilters={clearTableFilters}
+              hasActiveFilters={hasTableFilters}
+            />
             <Button variant="gold" className="gap-2" onClick={() => { setSelectedTable(null); setTableModalOpen(true); }}>
               <Plus className="h-4 w-4" />
               Ajouter une Table
@@ -398,7 +495,7 @@ const Restaurant = () => {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              {tables?.map((table, index) => (
+              {filteredTables?.map((table, index) => (
                 <div 
                   key={table.id}
                   className="animate-slide-up"
@@ -410,28 +507,36 @@ const Restaurant = () => {
             </div>
           )}
 
-          {!tablesLoading && tables?.length === 0 && (
+          {!tablesLoading && filteredTables?.length === 0 && (
             <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
               <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-lg font-medium text-muted-foreground">Aucune table configurée</p>
+              <p className="text-lg font-medium text-muted-foreground">Aucune table trouvée</p>
+              {hasTableFilters && (
+                <Button variant="link" onClick={clearTableFilters} className="mt-2">
+                  Effacer les filtres
+                </Button>
+              )}
             </div>
           )}
         </TabsContent>
 
         {/* Orders Tab */}
         <TabsContent value="orders">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-xl font-semibold">Commandes Actives</h3>
-            <div className="flex gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Rechercher..." className="w-48 pl-10" />
-              </div>
-              <Button variant="gold" className="gap-2" onClick={handleRoomService}>
-                <Plus className="h-4 w-4" />
-                Room Service
-              </Button>
-            </div>
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <SearchFilterBar
+              searchPlaceholder="Rechercher une commande..."
+              searchQuery={orderSearch}
+              onSearchChange={setOrderSearch}
+              filters={orderFilters}
+              activeFilters={orderActiveFilters}
+              onFilterChange={setOrderFilter}
+              onClearFilters={clearOrderFilters}
+              hasActiveFilters={hasOrderFilters}
+            />
+            <Button variant="gold" className="gap-2" onClick={handleRoomService}>
+              <Plus className="h-4 w-4" />
+              Room Service
+            </Button>
           </div>
 
           {ordersLoading ? (
@@ -442,7 +547,7 @@ const Restaurant = () => {
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {activeOrders?.map((order, index) => (
+              {filteredOrders?.map((order, index) => (
                 <div 
                   key={order.id}
                   className="animate-slide-up"
@@ -458,18 +563,32 @@ const Restaurant = () => {
             </div>
           )}
 
-          {!ordersLoading && activeOrders?.length === 0 && (
+          {!ordersLoading && filteredOrders?.length === 0 && (
             <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
               <ChefHat className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-lg font-medium text-muted-foreground">Aucune commande active</p>
+              <p className="text-lg font-medium text-muted-foreground">Aucune commande trouvée</p>
+              {hasOrderFilters && (
+                <Button variant="link" onClick={clearOrderFilters} className="mt-2">
+                  Effacer les filtres
+                </Button>
+              )}
             </div>
           )}
         </TabsContent>
 
         {/* Menu Tab */}
         <TabsContent value="menu">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-xl font-semibold">Carte du Restaurant</h3>
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <SearchFilterBar
+              searchPlaceholder="Rechercher un article..."
+              searchQuery={menuSearch}
+              onSearchChange={setMenuSearch}
+              filters={menuFilters}
+              activeFilters={menuActiveFilters}
+              onFilterChange={setMenuFilter}
+              onClearFilters={clearMenuFilters}
+              hasActiveFilters={hasMenuFilters}
+            />
             <Button variant="gold" className="gap-2" onClick={() => { setSelectedMenuItem(null); setMenuModalOpen(true); }}>
               <Plus className="h-4 w-4" />
               Ajouter un Article
@@ -483,59 +602,47 @@ const Restaurant = () => {
               ))}
             </div>
           ) : (
-            <div className="space-y-6">
-              {(['entrée', 'plat', 'dessert', 'boisson', 'apéritif'] as MenuCategory[]).map(category => {
-                const items = menuItems?.filter(item => item.category === category) || [];
-                if (items.length === 0) return null;
-                
-                const Icon = categoryIcons[category];
-                
-                return (
-                  <div key={category}>
-                    <h4 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold">
-                      <Icon className="h-5 w-5 text-gold" />
-                      {categoryLabels[category]}
-                    </h4>
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {items.map((item, index) => (
-                        <div 
-                          key={item.id}
-                          className="animate-slide-up"
-                          style={{ animationDelay: `${index * 30}ms` }}
-                        >
-                          <MenuItemCard item={item} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredMenu?.map((item, index) => (
+                <div 
+                  key={item.id}
+                  className="animate-slide-up"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <MenuItemCard item={item} />
+                </div>
+              ))}
             </div>
           )}
 
-          {!menuLoading && menuItems?.length === 0 && (
+          {!menuLoading && filteredMenu?.length === 0 && (
             <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
               <Utensils className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-lg font-medium text-muted-foreground">Aucun article au menu</p>
+              <p className="text-lg font-medium text-muted-foreground">Aucun article trouvé</p>
+              {hasMenuFilters && (
+                <Button variant="link" onClick={clearMenuFilters} className="mt-2">
+                  Effacer les filtres
+                </Button>
+              )}
             </div>
           )}
         </TabsContent>
       </Tabs>
 
-      <TableFormModal
-        open={tableModalOpen}
+      <TableFormModal 
+        open={tableModalOpen} 
         onOpenChange={setTableModalOpen}
         table={selectedTable}
       />
 
-      <MenuItemFormModal
-        open={menuModalOpen}
+      <MenuItemFormModal 
+        open={menuModalOpen} 
         onOpenChange={setMenuModalOpen}
         menuItem={selectedMenuItem}
       />
 
-      <OrderFormModal
-        open={orderModalOpen}
+      <OrderFormModal 
+        open={orderModalOpen} 
         onOpenChange={setOrderModalOpen}
         preselectedTable={orderPreselectedTable}
       />

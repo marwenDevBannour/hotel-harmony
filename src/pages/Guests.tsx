@@ -2,22 +2,21 @@ import MainLayout from '@/components/layout/MainLayout';
 import { useGuests, useGuestStats, Guest } from '@/hooks/useGuests';
 import { GuestFormModal } from '@/components/guests/GuestFormModal';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
+import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
-  Search, 
-  Filter,
   Mail,
   Phone,
   Crown,
   Star,
-  MoreVertical,
   Globe,
-  Pencil
+  Pencil,
+  Users
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 const GuestCard = ({ guest, onEdit }: { guest: Guest; onEdit: (guest: Guest) => void }) => {
   return (
@@ -91,6 +90,44 @@ const Guests = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
 
+  // Get unique nationalities for filter
+  const nationalityOptions = useMemo(() => {
+    if (!guests) return [];
+    const nationalities = [...new Set(guests.map(g => g.nationality).filter(Boolean))].sort();
+    return nationalities.map(n => ({ value: n!, label: n! }));
+  }, [guests]);
+
+  const filters: FilterConfig[] = [
+    {
+      key: 'vip',
+      label: 'Statut VIP',
+      options: [
+        { value: 'true', label: 'VIP uniquement' },
+        { value: 'false', label: 'Non VIP' },
+      ],
+    },
+    {
+      key: 'nationality',
+      label: 'Nationalité',
+      options: nationalityOptions,
+    },
+  ];
+
+  const {
+    filteredData,
+    searchQuery,
+    setSearchQuery,
+    activeFilters,
+    setFilter,
+    clearFilters,
+    hasActiveFilters,
+  } = useSearchFilter({
+    data: guests,
+    searchFields: ['first_name', 'last_name', 'email', 'phone', 'nationality'],
+    filters,
+    persistInUrl: true,
+  });
+
   const handleAddGuest = () => {
     setSelectedGuest(null);
     setModalOpen(true);
@@ -105,19 +142,16 @@ const Guests = () => {
     <MainLayout title="Clients" subtitle="Base de données des clients et programme de fidélité">
       {/* Header Actions */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input 
-              placeholder="Rechercher un client..." 
-              className="w-64 pl-10"
-            />
-          </div>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filtres
-          </Button>
-        </div>
+        <SearchFilterBar
+          searchPlaceholder="Rechercher un client..."
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          activeFilters={activeFilters}
+          onFilterChange={setFilter}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
         <Button variant="gold" className="gap-2" onClick={handleAddGuest}>
           <Plus className="h-4 w-4" />
           Nouveau Client
@@ -163,7 +197,7 @@ const Guests = () => {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {guests?.map((guest, index) => (
+          {filteredData?.map((guest, index) => (
             <div 
               key={guest.id}
               className="animate-slide-up"
@@ -172,6 +206,18 @@ const Guests = () => {
               <GuestCard guest={guest} onEdit={handleEditGuest} />
             </div>
           ))}
+        </div>
+      )}
+
+      {!isLoading && filteredData?.length === 0 && (
+        <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
+          <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+          <p className="text-lg font-medium text-muted-foreground">Aucun client trouvé</p>
+          {hasActiveFilters && (
+            <Button variant="link" onClick={clearFilters} className="mt-2">
+              Effacer les filtres
+            </Button>
+          )}
         </div>
       )}
 
