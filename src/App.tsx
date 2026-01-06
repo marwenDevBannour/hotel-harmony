@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import Rooms from "./pages/Rooms";
 import Reservations from "./pages/Reservations";
 import Guests from "./pages/Guests";
+import Billing from "./pages/Billing";
+import Restaurant from "./pages/Restaurant";
 import Auth from "./pages/Auth";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
@@ -47,9 +49,9 @@ const App = () => (
           <Route path="/rooms" element={<ProtectedRoute><Rooms /></ProtectedRoute>} />
           <Route path="/reservations" element={<ProtectedRoute><Reservations /></ProtectedRoute>} />
           <Route path="/guests" element={<ProtectedRoute><Guests /></ProtectedRoute>} />
-          <Route path="/billing" element={<ProtectedRoute><ComingSoon title="Facturation" description="Gestion des factures et paiements" /></ProtectedRoute>} />
+          <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+          <Route path="/restaurant" element={<ProtectedRoute><Restaurant /></ProtectedRoute>} />
           <Route path="/staff" element={<ProtectedRoute><ComingSoon title="Personnel" description="Gestion du personnel et des horaires" /></ProtectedRoute>} />
-          <Route path="/restaurant" element={<ProtectedRoute><ComingSoon title="Restauration" description="Gestion du restaurant et services" /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ComingSoon title="Rapports" description="Statistiques et analyses" /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><ComingSoon title="Paramètres" description="Configuration du système" /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
