@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   BedDouble, 
@@ -12,9 +12,12 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Hotel
+  Hotel,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
 
 interface NavItem {
   icon: React.ElementType;
@@ -38,6 +41,18 @@ const navItems: NavItem[] = [
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  const userInitials = user?.user_metadata?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U';
+  const userName = user?.user_metadata?.first_name 
+    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`
+    : user?.email?.split('@')[0] || 'Utilisateur';
 
   return (
     <aside 
@@ -112,13 +127,23 @@ const Sidebar = () => {
           collapsed && "justify-center"
         )}>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold">
-            AD
+            {userInitials}
           </div>
           {!collapsed && (
-            <div className="animate-fade-in">
-              <p className="text-sm font-medium">Admin Hôtel</p>
-              <p className="text-xs text-sidebar-foreground/60">Réceptionniste</p>
+            <div className="flex-1 animate-fade-in">
+              <p className="truncate text-sm font-medium">{userName}</p>
+              <p className="truncate text-xs text-sidebar-foreground/60">{user?.email}</p>
             </div>
+          )}
+          {!collapsed && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           )}
         </div>
       </div>
