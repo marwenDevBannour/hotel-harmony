@@ -4,6 +4,7 @@ import {
   useActiveOrders, 
   useRestaurantStats,
   useMenuItems,
+  useUpdateOrderStatus,
   RestaurantTable,
   RestaurantOrder,
   TableStatus,
@@ -11,6 +12,7 @@ import {
   MenuItem,
   MenuCategory
 } from '@/hooks/useRestaurant';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -121,8 +123,39 @@ const TableCard = ({ table, onNewOrder }: { table: RestaurantTable; onNewOrder: 
 };
 
 // Order Card Component
-const OrderCard = ({ order }: { order: RestaurantOrder }) => {
+const OrderCard = ({ order, onStatusChange, isUpdating }: { 
+  order: RestaurantOrder; 
+  onStatusChange: (orderId: string, newStatus: OrderStatus) => void;
+  isUpdating: boolean;
+}) => {
   const status = orderStatusConfig[order.status];
+
+  const getNextStatus = (currentStatus: OrderStatus): OrderStatus | null => {
+    const statusFlow: Record<OrderStatus, OrderStatus | null> = {
+      pending: 'preparing',
+      preparing: 'ready',
+      ready: 'served',
+      served: 'paid',
+      paid: null,
+      cancelled: null,
+    };
+    return statusFlow[currentStatus];
+  };
+
+  const getActionButton = () => {
+    const actions: Record<OrderStatus, { label: string; variant: 'outline' | 'gold' } | null> = {
+      pending: { label: 'Préparer', variant: 'outline' },
+      preparing: { label: 'Prêt', variant: 'outline' },
+      ready: { label: 'Servir', variant: 'gold' },
+      served: { label: 'Encaisser', variant: 'gold' },
+      paid: null,
+      cancelled: null,
+    };
+    return actions[order.status];
+  };
+
+  const action = getActionButton();
+  const nextStatus = getNextStatus(order.status);
 
   return (
     <div className="card-elevated card-hover overflow-hidden">
@@ -187,14 +220,15 @@ const OrderCard = ({ order }: { order: RestaurantOrder }) => {
             </p>
           </div>
           <div className="flex gap-2">
-            {order.status === 'pending' && (
-              <Button variant="outline" size="sm">Préparer</Button>
-            )}
-            {order.status === 'ready' && (
-              <Button variant="gold" size="sm">Servir</Button>
-            )}
-            {order.status === 'served' && (
-              <Button variant="gold" size="sm">Encaisser</Button>
+            {action && nextStatus && (
+              <Button 
+                variant={action.variant} 
+                size="sm"
+                disabled={isUpdating}
+                onClick={() => onStatusChange(order.id, nextStatus)}
+              >
+                {action.label}
+              </Button>
             )}
           </div>
         </div>
@@ -243,6 +277,7 @@ const Restaurant = () => {
   const { data: activeOrders, isLoading: ordersLoading } = useActiveOrders();
   const { data: menuItems, isLoading: menuLoading } = useMenuItems();
   const { data: stats, isLoading: statsLoading } = useRestaurantStats();
+  const updateOrderStatus = useUpdateOrderStatus();
 
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const [menuModalOpen, setMenuModalOpen] = useState(false);
@@ -259,6 +294,30 @@ const Restaurant = () => {
   const handleRoomService = () => {
     setOrderPreselectedTable(null);
     setOrderModalOpen(true);
+  };
+
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      await updateOrderStatus.mutateAsync({ id: orderId, status: newStatus });
+      const statusLabels: Record<OrderStatus, string> = {
+        pending: 'en attente',
+        preparing: 'en préparation',
+        ready: 'prête',
+        served: 'servie',
+        paid: 'payée',
+        cancelled: 'annulée',
+      };
+      toast({
+        title: "Statut mis à jour",
+        description: `Commande ${statusLabels[newStatus]}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -389,7 +448,11 @@ const Restaurant = () => {
                   className="animate-slide-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <OrderCard order={order} />
+                  <OrderCard 
+                    order={order} 
+                    onStatusChange={handleStatusChange}
+                    isUpdating={updateOrderStatus.isPending}
+                  />
                 </div>
               ))}
             </div>
