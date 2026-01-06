@@ -230,6 +230,8 @@ const Billing = () => {
           onFilterChange={setFilter}
           onClearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
+          onExportCSV={() => exportToCSV(filteredData || [], invoicesExportColumns, 'factures')}
+          onExportExcel={() => exportToExcel(filteredData || [], invoicesExportColumns, 'factures')}
         />
         <Button variant="gold" className="gap-2" onClick={handleNewInvoice}>
           <Plus className="h-4 w-4" />

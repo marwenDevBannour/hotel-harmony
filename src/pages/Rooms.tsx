@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
 import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
+import { exportToCSV, exportToExcel, roomsExportColumns } from '@/lib/exportUtils';
 import { cn } from '@/lib/utils';
 import { 
   BedDouble, 
@@ -225,6 +226,8 @@ const Rooms = () => {
           onFilterChange={setFilter}
           onClearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
+          onExportCSV={() => exportToCSV(filteredData || [], roomsExportColumns, 'chambres')}
+          onExportExcel={() => exportToExcel(filteredData || [], roomsExportColumns, 'chambres')}
         />
         <Button variant="gold" className="gap-2" onClick={handleAddRoom}>
           <Plus className="h-4 w-4" />

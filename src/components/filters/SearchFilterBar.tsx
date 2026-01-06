@@ -1,4 +1,4 @@
-import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Download, FileSpreadsheet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +13,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { FilterConfig } from '@/hooks/useSearchFilter';
@@ -27,6 +33,8 @@ interface SearchFilterBarProps {
   onClearFilters: () => void;
   hasActiveFilters: boolean;
   className?: string;
+  onExportCSV?: () => void;
+  onExportExcel?: () => void;
 }
 
 export function SearchFilterBar({
@@ -39,10 +47,14 @@ export function SearchFilterBar({
   onClearFilters,
   hasActiveFilters,
   className,
+  onExportCSV,
+  onExportExcel,
 }: SearchFilterBarProps) {
   const activeFilterCount = Object.values(activeFilters).filter(
     v => v && v !== 'all' && (Array.isArray(v) ? v.length > 0 : true)
   ).length;
+
+  const hasExport = onExportCSV || onExportExcel;
 
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
@@ -162,6 +174,32 @@ export function SearchFilterBar({
           <X className="h-4 w-4" />
           Effacer
         </Button>
+      )}
+
+      {/* Export Dropdown */}
+      {hasExport && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Exporter
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {onExportCSV && (
+              <DropdownMenuItem onClick={onExportCSV} className="gap-2">
+                <Download className="h-4 w-4" />
+                Exporter en CSV
+              </DropdownMenuItem>
+            )}
+            {onExportExcel && (
+              <DropdownMenuItem onClick={onExportExcel} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Exporter en Excel
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </div>
   );
