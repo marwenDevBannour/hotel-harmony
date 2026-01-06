@@ -31,7 +31,11 @@ import {
   MoreVertical,
   BedDouble,
   MapPin,
+  Edit,
 } from 'lucide-react';
+import { useState } from 'react';
+import TableFormModal from '@/components/restaurant/TableFormModal';
+import MenuItemFormModal from '@/components/restaurant/MenuItemFormModal';
 
 const tableStatusConfig: Record<TableStatus, { 
   label: string; 
@@ -234,6 +238,11 @@ const Restaurant = () => {
   const { data: menuItems, isLoading: menuLoading } = useMenuItems();
   const { data: stats, isLoading: statsLoading } = useRestaurantStats();
 
+  const [tableModalOpen, setTableModalOpen] = useState(false);
+  const [menuModalOpen, setMenuModalOpen] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
+  const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
+
   return (
     <MainLayout title="Restaurant" subtitle="Gestion des tables, commandes et menu">
       {/* Stats */}
@@ -298,7 +307,7 @@ const Restaurant = () => {
         <TabsContent value="tables">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-display text-xl font-semibold">Plan des Tables</h3>
-            <Button variant="gold" className="gap-2">
+            <Button variant="gold" className="gap-2" onClick={() => { setSelectedTable(null); setTableModalOpen(true); }}>
               <Plus className="h-4 w-4" />
               Ajouter une Table
             </Button>
@@ -380,7 +389,7 @@ const Restaurant = () => {
         <TabsContent value="menu">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-display text-xl font-semibold">Carte du Restaurant</h3>
-            <Button variant="gold" className="gap-2">
+            <Button variant="gold" className="gap-2" onClick={() => { setSelectedMenuItem(null); setMenuModalOpen(true); }}>
               <Plus className="h-4 w-4" />
               Ajouter un Article
             </Button>
@@ -431,6 +440,18 @@ const Restaurant = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      <TableFormModal
+        open={tableModalOpen}
+        onOpenChange={setTableModalOpen}
+        table={selectedTable}
+      />
+
+      <MenuItemFormModal
+        open={menuModalOpen}
+        onOpenChange={setMenuModalOpen}
+        menuItem={selectedMenuItem}
+      />
     </MainLayout>
   );
 };

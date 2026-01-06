@@ -15,8 +15,11 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Edit,
 } from 'lucide-react';
 import { useState } from 'react';
+import InvoiceFormModal from '@/components/billing/InvoiceFormModal';
+import PaymentFormModal from '@/components/billing/PaymentFormModal';
 
 const statusConfig: Record<InvoiceStatus, { 
   label: string; 
@@ -56,7 +59,15 @@ const typeLabels = {
   other: 'Autre',
 };
 
-const InvoiceCard = ({ invoice }: { invoice: Invoice }) => {
+const InvoiceCard = ({ 
+  invoice, 
+  onEdit, 
+  onPayment 
+}: { 
+  invoice: Invoice; 
+  onEdit: (invoice: Invoice) => void;
+  onPayment: (invoice: Invoice) => void;
+}) => {
   const status = statusConfig[invoice.status];
   const StatusIcon = status.icon;
   const balance = Number(invoice.total_amount) - Number(invoice.paid_amount);
@@ -84,8 +95,8 @@ const InvoiceCard = ({ invoice }: { invoice: Invoice }) => {
             <StatusIcon className="h-3 w-3" />
             {status.label}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreVertical className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(invoice)}>
+            <Edit className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -142,7 +153,7 @@ const InvoiceCard = ({ invoice }: { invoice: Invoice }) => {
           </div>
           <div className="flex gap-2">
             {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-              <Button variant="gold" size="sm">
+              <Button variant="gold" size="sm" onClick={() => onPayment(invoice)}>
                 Encaisser
               </Button>
             )}
@@ -161,10 +172,28 @@ const Billing = () => {
   const { data: invoices, isLoading } = useInvoices();
   const { data: stats, isLoading: statsLoading } = useInvoiceStats();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const filteredInvoices = statusFilter === 'all'
     ? invoices
     : invoices?.filter(i => i.status === statusFilter);
+
+  const handleEdit = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setInvoiceModalOpen(true);
+  };
+
+  const handlePayment = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setPaymentModalOpen(true);
+  };
+
+  const handleNewInvoice = () => {
+    setSelectedInvoice(null);
+    setInvoiceModalOpen(true);
+  };
 
   return (
     <MainLayout title="Facturation" subtitle="Gestion des factures et paiements">
@@ -183,7 +212,7 @@ const Billing = () => {
             Filtres
           </Button>
         </div>
-        <Button variant="gold" className="gap-2">
+        <Button variant="gold" className="gap-2" onClick={handleNewInvoice}>
           <Plus className="h-4 w-4" />
           Nouvelle Facture
         </Button>
@@ -272,7 +301,7 @@ const Billing = () => {
               className="animate-slide-up"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <InvoiceCard invoice={invoice} />
+              <InvoiceCard invoice={invoice} onEdit={handleEdit} onPayment={handlePayment} />
             </div>
           ))}
         </div>
@@ -283,6 +312,21 @@ const Billing = () => {
           <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium text-muted-foreground">Aucune facture trouvée</p>
         </div>
+      )}
+
+      <InvoiceFormModal
+        open={invoiceModalOpen}
+        onOpenChange={setInvoiceModalOpen}
+        invoice={selectedInvoice}
+      />
+
+      {selectedInvoice && (
+        <PaymentFormModal
+          open={paymentModalOpen}
+          onOpenChange={setPaymentModalOpen}
+          invoiceId={selectedInvoice.id}
+          remainingAmount={Number(selectedInvoice.total_amount) - Number(selectedInvoice.paid_amount)}
+        />
       )}
     </MainLayout>
   );
