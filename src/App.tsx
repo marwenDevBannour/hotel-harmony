@@ -2,15 +2,38 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Rooms from "./pages/Rooms";
 import Reservations from "./pages/Reservations";
 import Guests from "./pages/Guests";
+import Auth from "./pages/Auth";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gold border-t-transparent mx-auto" />
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -19,15 +42,16 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/rooms" element={<Rooms />} />
-          <Route path="/reservations" element={<Reservations />} />
-          <Route path="/guests" element={<Guests />} />
-          <Route path="/billing" element={<ComingSoon title="Facturation" description="Gestion des factures et paiements" />} />
-          <Route path="/staff" element={<ComingSoon title="Personnel" description="Gestion du personnel et des horaires" />} />
-          <Route path="/restaurant" element={<ComingSoon title="Restauration" description="Gestion du restaurant et services" />} />
-          <Route path="/reports" element={<ComingSoon title="Rapports" description="Statistiques et analyses" />} />
-          <Route path="/settings" element={<ComingSoon title="Paramètres" description="Configuration du système" />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+          <Route path="/rooms" element={<ProtectedRoute><Rooms /></ProtectedRoute>} />
+          <Route path="/reservations" element={<ProtectedRoute><Reservations /></ProtectedRoute>} />
+          <Route path="/guests" element={<ProtectedRoute><Guests /></ProtectedRoute>} />
+          <Route path="/billing" element={<ProtectedRoute><ComingSoon title="Facturation" description="Gestion des factures et paiements" /></ProtectedRoute>} />
+          <Route path="/staff" element={<ProtectedRoute><ComingSoon title="Personnel" description="Gestion du personnel et des horaires" /></ProtectedRoute>} />
+          <Route path="/restaurant" element={<ProtectedRoute><ComingSoon title="Restauration" description="Gestion du restaurant et services" /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><ComingSoon title="Rapports" description="Statistiques et analyses" /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><ComingSoon title="Paramètres" description="Configuration du système" /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
