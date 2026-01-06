@@ -1,8 +1,8 @@
 import MainLayout from '@/components/layout/MainLayout';
-import { mockRooms } from '@/data/mockData';
-import { Room, RoomStatus, RoomType } from '@/types/hotel';
+import { useRooms, Room, RoomStatus, RoomType } from '@/hooks/useRooms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { 
   BedDouble, 
@@ -14,9 +14,6 @@ import {
   Wine,
   Waves,
   Sparkles,
-  Check,
-  Wrench,
-  Calendar,
   User
 } from 'lucide-react';
 import { useState } from 'react';
@@ -86,9 +83,7 @@ const RoomCard = ({ room }: { room: Room }) => {
       {/* Header */}
       <div className={cn("flex items-center justify-between p-4", status.bgColor)}>
         <div className="flex items-center gap-3">
-          <div className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-xl bg-card shadow-sm",
-          )}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-card shadow-sm">
             <span className="font-display text-xl font-bold">{room.number}</span>
           </div>
           <div>
@@ -107,22 +102,9 @@ const RoomCard = ({ room }: { room: Room }) => {
 
       {/* Body */}
       <div className="p-4">
-        {/* Guest Info */}
-        {room.currentGuest && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-muted p-3">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{room.currentGuest}</p>
-              <p className="text-xs text-muted-foreground">
-                Check-out: {new Date(room.checkoutDate!).toLocaleDateString('fr-FR')}
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Amenities */}
         <div className="mb-4 flex flex-wrap gap-2">
-          {room.amenities.slice(0, 4).map((amenity) => {
+          {room.amenities?.slice(0, 4).map((amenity) => {
             const Icon = amenityIcons[amenity] || Sparkles;
             return (
               <span 
@@ -134,7 +116,7 @@ const RoomCard = ({ room }: { room: Room }) => {
               </span>
             );
           })}
-          {room.amenities.length > 4 && (
+          {room.amenities && room.amenities.length > 4 && (
             <span className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground">
               +{room.amenities.length - 4}
             </span>
@@ -145,7 +127,7 @@ const RoomCard = ({ room }: { room: Room }) => {
         <div className="flex items-center justify-between">
           <div>
             <span className="font-display text-2xl font-bold text-foreground">
-              {room.pricePerNight} €
+              {Number(room.price_per_night)} €
             </span>
             <span className="text-sm text-muted-foreground"> / nuit</span>
           </div>
@@ -162,16 +144,17 @@ const RoomCard = ({ room }: { room: Room }) => {
 };
 
 const Rooms = () => {
+  const { data: rooms, isLoading } = useRooms();
   const [filter, setFilter] = useState<RoomStatus | 'all'>('all');
 
   const filteredRooms = filter === 'all' 
-    ? mockRooms 
-    : mockRooms.filter(r => r.status === filter);
+    ? rooms 
+    : rooms?.filter(r => r.status === filter);
 
-  const statusCounts = mockRooms.reduce((acc, room) => {
+  const statusCounts = rooms?.reduce((acc, room) => {
     acc[room.status] = (acc[room.status] || 0) + 1;
     return acc;
-  }, {} as Record<RoomStatus, number>);
+  }, {} as Record<RoomStatus, number>) || {};
 
   return (
     <MainLayout title="Gestion des Chambres" subtitle="Gérez l'inventaire et l'état des chambres">
@@ -207,7 +190,7 @@ const Rooms = () => {
               : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
           )}
         >
-          Toutes ({mockRooms.length})
+          Toutes ({rooms?.length || 0})
         </button>
         {Object.entries(statusConfig).map(([status, config]) => (
           <button
@@ -226,19 +209,27 @@ const Rooms = () => {
       </div>
 
       {/* Room Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredRooms.map((room, index) => (
-          <div 
-            key={room.id} 
-            className="animate-slide-up"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <RoomCard room={room} />
-          </div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-64 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredRooms?.map((room, index) => (
+            <div 
+              key={room.id} 
+              className="animate-slide-up"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <RoomCard room={room} />
+            </div>
+          ))}
+        </div>
+      )}
 
-      {filteredRooms.length === 0 && (
+      {!isLoading && filteredRooms?.length === 0 && (
         <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
           <BedDouble className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium text-muted-foreground">Aucune chambre trouvée</p>

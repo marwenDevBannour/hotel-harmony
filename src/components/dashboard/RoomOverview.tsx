@@ -1,4 +1,4 @@
-import { Room, RoomStatus } from '@/types/hotel';
+import { Room, RoomStatus } from '@/hooks/useRooms';
 import { cn } from '@/lib/utils';
 import { BedDouble, Wrench, Sparkles, Calendar, Check } from 'lucide-react';
 
@@ -44,6 +44,14 @@ const statusConfig: Record<RoomStatus, {
   },
 };
 
+const typeLabels: Record<string, string> = {
+  standard: 'Std',
+  superior: 'Sup',
+  deluxe: 'Dlx',
+  suite: 'Suite',
+  presidential: 'Prés',
+};
+
 const RoomOverview = ({ rooms }: RoomOverviewProps) => {
   const groupedByFloor = rooms.reduce((acc, room) => {
     if (!acc[room.floor]) acc[room.floor] = [];
@@ -87,15 +95,9 @@ const RoomOverview = ({ rooms }: RoomOverviewProps) => {
                     <span className="font-display text-lg font-semibold text-foreground">
                       {room.number}
                     </span>
-                    <span className={cn("text-xs font-medium capitalize", config.color)}>
-                      {room.type}
+                    <span className={cn("text-xs font-medium", config.color)}>
+                      {typeLabels[room.type] || room.type}
                     </span>
-                    
-                    {room.currentGuest && (
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-foreground px-2 py-0.5 text-[10px] font-medium text-background opacity-0 transition-opacity group-hover:opacity-100">
-                        {room.currentGuest}
-                      </div>
-                    )}
                   </button>
                 );
               })}

@@ -1,5 +1,4 @@
-import { Reservation } from '@/types/hotel';
-import { Badge } from '@/components/ui/badge';
+import { Reservation } from '@/hooks/useReservations';
 import { cn } from '@/lib/utils';
 import { ExternalLink, Calendar, CreditCard } from 'lucide-react';
 
@@ -8,11 +7,11 @@ interface RecentReservationsProps {
 }
 
 const statusConfig = {
-  confirmed: { label: 'Confirmée', variant: 'default' as const, className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  pending: { label: 'En attente', variant: 'secondary' as const, className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  'checked-in': { label: 'Enregistré', variant: 'default' as const, className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  'checked-out': { label: 'Parti', variant: 'secondary' as const, className: 'bg-gray-100 text-gray-700 border-gray-200' },
-  cancelled: { label: 'Annulée', variant: 'destructive' as const, className: 'bg-red-100 text-red-700 border-red-200' },
+  confirmed: { label: 'Confirmée', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+  pending: { label: 'En attente', className: 'bg-amber-100 text-amber-700 border-amber-200' },
+  checked_in: { label: 'Enregistré', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  checked_out: { label: 'Parti', className: 'bg-gray-100 text-gray-700 border-gray-200' },
+  cancelled: { label: 'Annulée', className: 'bg-red-100 text-red-700 border-red-200' },
 };
 
 const sourceLabels = {
@@ -61,7 +60,7 @@ const RecentReservations = ({ reservations }: RecentReservationsProps) => {
           <tbody className="divide-y divide-border">
             {reservations.slice(0, 5).map((reservation) => {
               const status = statusConfig[reservation.status];
-              const balance = reservation.totalAmount - reservation.paidAmount;
+              const balance = Number(reservation.total_amount) - Number(reservation.paid_amount);
               
               return (
                 <tr 
@@ -70,19 +69,21 @@ const RecentReservations = ({ reservations }: RecentReservationsProps) => {
                 >
                   <td className="px-4 py-4">
                     <div>
-                      <p className="font-medium text-foreground">{reservation.guestName}</p>
-                      <p className="text-xs text-muted-foreground">Réf: {reservation.id}</p>
+                      <p className="font-medium text-foreground">
+                        {reservation.guest?.first_name} {reservation.guest?.last_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Réf: {reservation.reservation_number}</p>
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="font-display text-lg font-semibold">{reservation.roomNumber}</span>
+                    <span className="font-display text-lg font-semibold">{reservation.room?.number}</span>
                   </td>
                   <td className="hidden px-4 py-4 sm:table-cell">
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>{new Date(reservation.checkIn).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+                      <span>{new Date(reservation.check_in).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                       <span>→</span>
-                      <span>{new Date(reservation.checkOut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+                      <span>{new Date(reservation.check_out).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                     </div>
                   </td>
                   <td className="hidden px-4 py-4 md:table-cell">
@@ -91,13 +92,13 @@ const RecentReservations = ({ reservations }: RecentReservationsProps) => {
                   <td className="px-4 py-4">
                     <span className={cn(
                       "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                      status.className
+                      status?.className
                     )}>
-                      {status.label}
+                      {status?.label}
                     </span>
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <p className="font-semibold text-foreground">{reservation.totalAmount.toLocaleString('fr-FR')} €</p>
+                    <p className="font-semibold text-foreground">{Number(reservation.total_amount).toLocaleString('fr-FR')} €</p>
                     {balance > 0 && (
                       <p className="flex items-center justify-end gap-1 text-xs text-amber-600">
                         <CreditCard className="h-3 w-3" />

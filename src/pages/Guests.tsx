@@ -1,8 +1,8 @@
 import MainLayout from '@/components/layout/MainLayout';
-import { mockGuests } from '@/data/mockData';
-import { Guest } from '@/types/hotel';
+import { useGuests, useGuestStats, Guest } from '@/hooks/useGuests';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
@@ -25,15 +25,15 @@ const GuestCard = ({ guest }: { guest: Guest }) => {
           <div className={cn(
             "flex h-14 w-14 items-center justify-center rounded-full text-lg font-semibold",
             guest.vip 
-              ? "bg-gradient-to-br from-gold to-gold-dark text-primary" 
+              ? "bg-gradient-to-br from-amber-400 to-amber-600 text-primary" 
               : "bg-secondary text-secondary-foreground"
           )}>
-            {guest.firstName[0]}{guest.lastName[0]}
+            {guest.first_name[0]}{guest.last_name[0]}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <p className="font-display text-lg font-semibold">
-                {guest.firstName} {guest.lastName}
+                {guest.first_name} {guest.last_name}
               </p>
               {guest.vip && (
                 <Crown className="h-4 w-4 text-gold" />
@@ -41,7 +41,7 @@ const GuestCard = ({ guest }: { guest: Guest }) => {
             </div>
             <p className="flex items-center gap-1 text-sm text-muted-foreground">
               <Globe className="h-3 w-3" />
-              {guest.nationality}
+              {guest.nationality || 'Non spécifié'}
             </p>
           </div>
         </div>
@@ -65,13 +65,13 @@ const GuestCard = ({ guest }: { guest: Guest }) => {
         <div className="flex items-center gap-4">
           <div>
             <p className="text-xs text-muted-foreground">Séjours</p>
-            <p className="font-semibold">{guest.totalStays}</p>
+            <p className="font-semibold">{guest.total_stays}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Points</p>
             <p className="flex items-center gap-1 font-semibold text-gold">
               <Star className="h-3 w-3" />
-              {guest.loyaltyPoints.toLocaleString()}
+              {guest.loyalty_points.toLocaleString()}
             </p>
           </div>
         </div>
@@ -84,6 +84,9 @@ const GuestCard = ({ guest }: { guest: Guest }) => {
 };
 
 const Guests = () => {
+  const { data: guests, isLoading } = useGuests();
+  const { data: stats, isLoading: statsLoading } = useGuestStats();
+
   return (
     <MainLayout title="Clients" subtitle="Base de données des clients et programme de fidélité">
       {/* Header Actions */}
@@ -109,36 +112,54 @@ const Guests = () => {
 
       {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="card-elevated p-4">
-          <p className="text-sm text-muted-foreground">Total Clients</p>
-          <p className="font-display text-2xl font-bold">{mockGuests.length}</p>
-        </div>
-        <div className="card-elevated p-4">
-          <p className="text-sm text-muted-foreground">Clients VIP</p>
-          <p className="font-display text-2xl font-bold text-gold">
-            {mockGuests.filter(g => g.vip).length}
-          </p>
-        </div>
-        <div className="card-elevated p-4">
-          <p className="text-sm text-muted-foreground">Points Distribués</p>
-          <p className="font-display text-2xl font-bold">
-            {mockGuests.reduce((acc, g) => acc + g.loyaltyPoints, 0).toLocaleString()}
-          </p>
-        </div>
+        {statsLoading ? (
+          <>
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+          </>
+        ) : (
+          <>
+            <div className="card-elevated p-4">
+              <p className="text-sm text-muted-foreground">Total Clients</p>
+              <p className="font-display text-2xl font-bold">{stats?.total || 0}</p>
+            </div>
+            <div className="card-elevated p-4">
+              <p className="text-sm text-muted-foreground">Clients VIP</p>
+              <p className="font-display text-2xl font-bold text-gold">
+                {stats?.vipCount || 0}
+              </p>
+            </div>
+            <div className="card-elevated p-4">
+              <p className="text-sm text-muted-foreground">Points Distribués</p>
+              <p className="font-display text-2xl font-bold">
+                {stats?.totalPoints?.toLocaleString() || 0}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Guests Grid */}
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {mockGuests.map((guest, index) => (
-          <div 
-            key={guest.id}
-            className="animate-slide-up"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <GuestCard guest={guest} />
-          </div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-56 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {guests?.map((guest, index) => (
+            <div 
+              key={guest.id}
+              className="animate-slide-up"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <GuestCard guest={guest} />
+            </div>
+          ))}
+        </div>
+      )}
     </MainLayout>
   );
 };
