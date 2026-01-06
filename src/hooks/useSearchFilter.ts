@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 export interface FilterOption {
@@ -42,29 +42,38 @@ export function useSearchFilter<T extends Record<string, any>>({
 }: UseSearchFilterOptions<T>): UseSearchFilterResult<T> {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Initialize state from URL if persistence enabled
-  const initialSearch = persistInUrl ? searchParams.get('q') || '' : '';
-  const initialFilters: Record<string, string | string[]> = {};
-  
-  if (persistInUrl) {
-    filters.forEach(filter => {
-      const value = searchParams.get(filter.key);
-      if (value) {
-        initialFilters[filter.key] = filter.multiple ? value.split(',') : value;
-      }
-    });
-  }
+  const [searchQuery, setSearchQueryState] = useState('');
+  const [activeFilters, setActiveFilters] = useState<Record<string, string | string[]>>({});
+  const [initialized, setInitialized] = useState(false);
 
-  const [searchQuery, setSearchQueryState] = useState(initialSearch);
-  const [activeFilters, setActiveFilters] = useState<Record<string, string | string[]>>(initialFilters);
+  // Initialize state from URL if persistence enabled (only once)
+  useEffect(() => {
+    if (initialized) return;
+    
+    if (persistInUrl) {
+      const urlSearch = searchParams.get('q') || '';
+      setSearchQueryState(urlSearch);
+      
+      const urlFilters: Record<string, string | string[]> = {};
+      filters.forEach(filter => {
+        const value = searchParams.get(filter.key);
+        if (value) {
+          urlFilters[filter.key] = filter.multiple ? value.split(',') : value;
+        }
+      });
+      setActiveFilters(urlFilters);
+    }
+    
+    setInitialized(true);
+  }, [persistInUrl, searchParams, filters, initialized]);
 
-  const updateUrl = useCallback((search: string, filters: Record<string, string | string[]>) => {
+  const updateUrl = useCallback((search: string, filtersState: Record<string, string | string[]>) => {
     if (!persistInUrl) return;
     
     const params = new URLSearchParams();
     if (search) params.set('q', search);
     
-    Object.entries(filters).forEach(([key, value]) => {
+    Object.entries(filtersState).forEach(([key, value]) => {
       if (value && (Array.isArray(value) ? value.length > 0 : value !== 'all')) {
         params.set(key, Array.isArray(value) ? value.join(',') : value);
       }
