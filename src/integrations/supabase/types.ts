@@ -65,6 +65,244 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          item_type: string
+          quantity: number
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          item_type?: string
+          quantity?: number
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          item_type?: string
+          quantity?: number
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          guest_id: string
+          id: string
+          invoice_number: string
+          notes: string | null
+          paid_amount: number
+          reservation_id: string | null
+          status: string
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total_amount: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          guest_id: string
+          id?: string
+          invoice_number: string
+          notes?: string | null
+          paid_amount?: number
+          reservation_id?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total_amount?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          guest_id?: string
+          id?: string
+          invoice_number?: string
+          notes?: string | null
+          paid_amount?: number
+          reservation_id?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total_amount?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          available: boolean
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          menu_item_id: string
+          notes: string | null
+          order_id: string
+          quantity: number
+          status: string
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_item_id: string
+          notes?: string | null
+          order_id: string
+          quantity?: number
+          status?: string
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_item_id?: string
+          notes?: string | null
+          order_id?: string
+          quantity?: number
+          status?: string
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          payment_method: string
+          received_by: string | null
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          payment_method: string
+          received_by?: string | null
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          payment_method?: string
+          received_by?: string | null
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -169,6 +407,109 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      restaurant_orders: {
+        Row: {
+          created_at: string
+          guest_id: string | null
+          id: string
+          notes: string | null
+          order_number: string
+          order_type: string
+          room_id: string | null
+          status: string
+          subtotal: number
+          table_id: string | null
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+          waiter_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          guest_id?: string | null
+          id?: string
+          notes?: string | null
+          order_number: string
+          order_type?: string
+          room_id?: string | null
+          status?: string
+          subtotal?: number
+          table_id?: string | null
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+          waiter_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          guest_id?: string | null
+          id?: string
+          notes?: string | null
+          order_number?: string
+          order_type?: string
+          room_id?: string | null
+          status?: string
+          subtotal?: number
+          table_id?: string | null
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+          waiter_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_orders_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_orders_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_orders_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_tables: {
+        Row: {
+          capacity: number
+          created_at: string
+          id: string
+          location: string | null
+          number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          location?: string | null
+          number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          location?: string | null
+          number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       rooms: {
         Row: {
