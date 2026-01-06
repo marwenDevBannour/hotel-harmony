@@ -1,8 +1,8 @@
 import MainLayout from '@/components/layout/MainLayout';
-import { mockReservations } from '@/data/mockData';
-import { Reservation } from '@/types/hotel';
+import { useReservations, Reservation, ReservationStatus } from '@/hooks/useReservations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { 
   Plus, 
@@ -12,17 +12,14 @@ import {
   User,
   CreditCard,
   MoreVertical,
-  Phone,
-  Mail,
-  ExternalLink
 } from 'lucide-react';
 import { useState } from 'react';
 
-const statusConfig = {
+const statusConfig: Record<ReservationStatus, { label: string; className: string }> = {
   confirmed: { label: 'Confirmée', className: 'bg-blue-100 text-blue-700 border-blue-200' },
   pending: { label: 'En attente', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  'checked-in': { label: 'Enregistré', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  'checked-out': { label: 'Parti', className: 'bg-gray-100 text-gray-700 border-gray-200' },
+  checked_in: { label: 'Enregistré', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  checked_out: { label: 'Parti', className: 'bg-gray-100 text-gray-700 border-gray-200' },
   cancelled: { label: 'Annulée', className: 'bg-red-100 text-red-700 border-red-200' },
 };
 
@@ -37,9 +34,9 @@ const sourceConfig = {
 const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
   const status = statusConfig[reservation.status];
   const source = sourceConfig[reservation.source];
-  const balance = reservation.totalAmount - reservation.paidAmount;
-  const checkInDate = new Date(reservation.checkIn);
-  const checkOutDate = new Date(reservation.checkOut);
+  const balance = Number(reservation.total_amount) - Number(reservation.paid_amount);
+  const checkInDate = new Date(reservation.check_in);
+  const checkOutDate = new Date(reservation.check_out);
   const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
 
   return (
@@ -51,8 +48,10 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
             <User className="h-6 w-6 text-gold" />
           </div>
           <div>
-            <p className="font-display text-lg font-semibold">{reservation.guestName}</p>
-            <p className="text-sm text-muted-foreground">Réf: {reservation.id}</p>
+            <p className="font-display text-lg font-semibold">
+              {reservation.guest?.first_name} {reservation.guest?.last_name}
+            </p>
+            <p className="text-sm text-muted-foreground">Réf: {reservation.reservation_number}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -74,7 +73,7 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
         <div className="mb-4 grid grid-cols-3 gap-4">
           <div className="rounded-lg bg-secondary p-3 text-center">
             <p className="text-xs text-muted-foreground">Chambre</p>
-            <p className="font-display text-2xl font-bold">{reservation.roomNumber}</p>
+            <p className="font-display text-2xl font-bold">{reservation.room?.number}</p>
           </div>
           <div className="rounded-lg bg-secondary p-3 text-center">
             <p className="text-xs text-muted-foreground">Arrivée</p>
@@ -99,10 +98,10 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
         </div>
 
         {/* Special Requests */}
-        {reservation.specialRequests && (
+        {reservation.special_requests && (
           <div className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             <p className="font-medium">Note:</p>
-            <p>{reservation.specialRequests}</p>
+            <p>{reservation.special_requests}</p>
           </div>
         )}
 
@@ -110,7 +109,7 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
         <div className="flex items-center justify-between border-t border-border pt-4">
           <div>
             <p className="text-sm text-muted-foreground">Montant total</p>
-            <p className="font-display text-xl font-bold">{reservation.totalAmount.toLocaleString('fr-FR')} €</p>
+            <p className="font-display text-xl font-bold">{Number(reservation.total_amount).toLocaleString('fr-FR')} €</p>
             {balance > 0 && (
               <p className="flex items-center gap-1 text-xs text-amber-600">
                 <CreditCard className="h-3 w-3" />
@@ -122,7 +121,7 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
             {reservation.status === 'confirmed' && (
               <Button variant="gold" size="sm">Check-in</Button>
             )}
-            {reservation.status === 'checked-in' && (
+            {reservation.status === 'checked_in' && (
               <Button variant="outline" size="sm">Check-out</Button>
             )}
             <Button variant="outline" size="sm">
@@ -136,11 +135,12 @@ const ReservationCard = ({ reservation }: { reservation: Reservation }) => {
 };
 
 const Reservations = () => {
+  const { data: reservations, isLoading } = useReservations();
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const filteredReservations = statusFilter === 'all'
-    ? mockReservations
-    : mockReservations.filter(r => r.status === statusFilter);
+    ? reservations
+    : reservations?.filter(r => r.status === statusFilter);
 
   return (
     <MainLayout title="Réservations" subtitle="Gérez toutes les réservations de l'établissement">
@@ -180,10 +180,10 @@ const Reservations = () => {
               : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
           )}
         >
-          Toutes ({mockReservations.length})
+          Toutes ({reservations?.length || 0})
         </button>
         {Object.entries(statusConfig).map(([status, config]) => {
-          const count = mockReservations.filter(r => r.status === status).length;
+          const count = reservations?.filter(r => r.status === status).length || 0;
           return (
             <button
               key={status}
@@ -202,19 +202,27 @@ const Reservations = () => {
       </div>
 
       {/* Reservations Grid */}
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {filteredReservations.map((reservation, index) => (
-          <div 
-            key={reservation.id}
-            className="animate-slide-up"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <ReservationCard reservation={reservation} />
-          </div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-80 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {filteredReservations?.map((reservation, index) => (
+            <div 
+              key={reservation.id}
+              className="animate-slide-up"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <ReservationCard reservation={reservation} />
+            </div>
+          ))}
+        </div>
+      )}
 
-      {filteredReservations.length === 0 && (
+      {!isLoading && filteredReservations?.length === 0 && (
         <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
           <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium text-muted-foreground">Aucune réservation trouvée</p>
