@@ -1,5 +1,6 @@
 import MainLayout from '@/components/layout/MainLayout';
 import { useGuests, useGuestStats, Guest } from '@/hooks/useGuests';
+import { GuestFormModal } from '@/components/guests/GuestFormModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,16 +9,17 @@ import {
   Plus, 
   Search, 
   Filter,
-  User,
   Mail,
   Phone,
   Crown,
   Star,
   MoreVertical,
-  Globe
+  Globe,
+  Pencil
 } from 'lucide-react';
+import { useState } from 'react';
 
-const GuestCard = ({ guest }: { guest: Guest }) => {
+const GuestCard = ({ guest, onEdit }: { guest: Guest; onEdit: (guest: Guest) => void }) => {
   return (
     <div className="card-elevated card-hover p-6">
       <div className="flex items-start justify-between">
@@ -45,8 +47,8 @@ const GuestCard = ({ guest }: { guest: Guest }) => {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <MoreVertical className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(guest)}>
+          <Pencil className="h-4 w-4" />
         </Button>
       </div>
 
@@ -86,6 +88,18 @@ const GuestCard = ({ guest }: { guest: Guest }) => {
 const Guests = () => {
   const { data: guests, isLoading } = useGuests();
   const { data: stats, isLoading: statsLoading } = useGuestStats();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+
+  const handleAddGuest = () => {
+    setSelectedGuest(null);
+    setModalOpen(true);
+  };
+
+  const handleEditGuest = (guest: Guest) => {
+    setSelectedGuest(guest);
+    setModalOpen(true);
+  };
 
   return (
     <MainLayout title="Clients" subtitle="Base de données des clients et programme de fidélité">
@@ -104,7 +118,7 @@ const Guests = () => {
             Filtres
           </Button>
         </div>
-        <Button variant="gold" className="gap-2">
+        <Button variant="gold" className="gap-2" onClick={handleAddGuest}>
           <Plus className="h-4 w-4" />
           Nouveau Client
         </Button>
@@ -155,11 +169,17 @@ const Guests = () => {
               className="animate-slide-up"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <GuestCard guest={guest} />
+              <GuestCard guest={guest} onEdit={handleEditGuest} />
             </div>
           ))}
         </div>
       )}
+
+      <GuestFormModal 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+        guest={selectedGuest}
+      />
     </MainLayout>
   );
 };

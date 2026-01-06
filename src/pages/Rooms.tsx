@@ -1,5 +1,6 @@
 import MainLayout from '@/components/layout/MainLayout';
 import { useRooms, Room, RoomStatus, RoomType } from '@/hooks/useRooms';
+import { RoomFormModal } from '@/components/rooms/RoomFormModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +15,7 @@ import {
   Wine,
   Waves,
   Sparkles,
-  User
+  Pencil
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -72,7 +73,7 @@ const amenityIcons: Record<string, React.ElementType> = {
   'Jacuzzi': Waves,
 };
 
-const RoomCard = ({ room }: { room: Room }) => {
+const RoomCard = ({ room, onEdit }: { room: Room; onEdit: (room: Room) => void }) => {
   const status = statusConfig[room.status];
 
   return (
@@ -131,12 +132,21 @@ const RoomCard = ({ room }: { room: Room }) => {
             </span>
             <span className="text-sm text-muted-foreground"> / nuit</span>
           </div>
-          <Button 
-            variant={room.status === 'available' ? 'gold' : 'outline'} 
-            size="sm"
-          >
-            {room.status === 'available' ? 'Réserver' : 'Détails'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => onEdit(room)}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Button 
+              variant={room.status === 'available' ? 'gold' : 'outline'} 
+              size="sm"
+            >
+              {room.status === 'available' ? 'Réserver' : 'Détails'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -146,6 +156,8 @@ const RoomCard = ({ room }: { room: Room }) => {
 const Rooms = () => {
   const { data: rooms, isLoading } = useRooms();
   const [filter, setFilter] = useState<RoomStatus | 'all'>('all');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
   const filteredRooms = filter === 'all' 
     ? rooms 
@@ -155,6 +167,16 @@ const Rooms = () => {
     acc[room.status] = (acc[room.status] || 0) + 1;
     return acc;
   }, {} as Record<RoomStatus, number>) || {};
+
+  const handleAddRoom = () => {
+    setSelectedRoom(null);
+    setModalOpen(true);
+  };
+
+  const handleEditRoom = (room: Room) => {
+    setSelectedRoom(room);
+    setModalOpen(true);
+  };
 
   return (
     <MainLayout title="Gestion des Chambres" subtitle="Gérez l'inventaire et l'état des chambres">
@@ -173,7 +195,7 @@ const Rooms = () => {
             Filtres
           </Button>
         </div>
-        <Button variant="gold" className="gap-2">
+        <Button variant="gold" className="gap-2" onClick={handleAddRoom}>
           <Plus className="h-4 w-4" />
           Ajouter une Chambre
         </Button>
@@ -223,7 +245,7 @@ const Rooms = () => {
               className="animate-slide-up"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <RoomCard room={room} />
+              <RoomCard room={room} onEdit={handleEditRoom} />
             </div>
           ))}
         </div>
@@ -235,6 +257,12 @@ const Rooms = () => {
           <p className="text-lg font-medium text-muted-foreground">Aucune chambre trouvée</p>
         </div>
       )}
+
+      <RoomFormModal 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+        room={selectedRoom}
+      />
     </MainLayout>
   );
 };
