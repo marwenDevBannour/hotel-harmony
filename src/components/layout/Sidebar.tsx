@@ -49,9 +49,9 @@ const Sidebar = () => {
     navigate('/auth');
   };
 
-  const userInitials = user?.user_metadata?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U';
-  const userName = user?.user_metadata?.first_name 
-    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`
+  const userInitials = user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U';
+  const userName = user?.firstName 
+    ? `${user.firstName} ${user.lastName || ''}`
     : user?.email?.split('@')[0] || 'Utilisateur';
 
   return (

@@ -1,35 +1,57 @@
-import { useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState, useCallback } from 'react';
+import { authApi, User } from '@/services/api';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+  const checkAuth = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setUser(null);
       setLoading(false);
-    });
+      return;
+    }
 
-    return () => subscription.unsubscribe();
+    try {
+      const currentUser = await authApi.getCurrentUser();
+      setUser(currentUser);
+    } catch (error) {
+      // Token invalid or expired
+      localStorage.removeItem('auth_token');
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
-  return { user, session, loading, signOut };
+  const signOut = useCallback(async () => {
+    authApi.logout();
+    setUser(null);
+  }, []);
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    const response = await authApi.login(email, password);
+    setUser(response.user);
+    return response;
+  }, []);
+
+  const signUp = useCallback(async (data: { email: string; password: string; firstName: string; lastName: string }) => {
+    const response = await authApi.signup(data);
+    setUser(response.user);
+    return response;
+  }, []);
+
+  return { 
+    user, 
+    session: user ? { user } : null, 
+    loading, 
+    signOut,
+    signIn,
+    signUp,
+  };
 };
