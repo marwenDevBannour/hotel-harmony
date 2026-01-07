@@ -1,6 +1,6 @@
 import { LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Reservation } from '@/hooks/useReservations';
+import { Reservation } from '@/services/api';
 
 interface TodayActivityProps {
   arrivals: Reservation[];
@@ -44,11 +44,10 @@ const TodayActivity = ({ arrivals, departures }: TodayActivityProps) => {
                     </div>
                     <div>
                       <p className="font-medium text-foreground">
-                        {reservation.guest?.first_name} {reservation.guest?.last_name}
+                        {reservation.guest?.name || 'N/A'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Chambre {reservation.room?.number} • {reservation.adults} adultes
-                        {reservation.children > 0 && `, ${reservation.children} enfants`}
+                        Chambre {reservation.room?.number}
                       </p>
                     </div>
                   </div>
@@ -73,32 +72,29 @@ const TodayActivity = ({ arrivals, departures }: TodayActivityProps) => {
           </h4>
           <div className="space-y-2">
             {departures.length > 0 ? (
-              departures.map((reservation) => {
-                const balance = Number(reservation.total_amount) - Number(reservation.paid_amount);
-                return (
-                  <div 
-                    key={reservation.id} 
-                    className="flex items-center justify-between rounded-lg border border-amber-100 bg-amber-50/50 p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100">
-                        <User className="h-4 w-4 text-amber-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {reservation.guest?.first_name} {reservation.guest?.last_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Chambre {reservation.room?.number} • Solde: {balance.toLocaleString('fr-FR')} €
-                        </p>
-                      </div>
+              departures.map((reservation) => (
+                <div 
+                  key={reservation.id} 
+                  className="flex items-center justify-between rounded-lg border border-amber-100 bg-amber-50/50 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100">
+                      <User className="h-4 w-4 text-amber-600" />
                     </div>
-                    <Button size="sm" variant="outline">
-                      Check-out
-                    </Button>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {reservation.guest?.name || 'N/A'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Chambre {reservation.room?.number}
+                      </p>
+                    </div>
                   </div>
-                );
-              })
+                  <Button size="sm" variant="outline">
+                    Check-out
+                  </Button>
+                </div>
+              ))
             ) : (
               <p className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground">
                 Aucun départ prévu

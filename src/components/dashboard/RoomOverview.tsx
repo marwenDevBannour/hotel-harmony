@@ -1,48 +1,10 @@
-import { Room, RoomStatus } from '@/hooks/useRooms';
+import { Room } from '@/services/api';
 import { cn } from '@/lib/utils';
-import { BedDouble, Wrench, Sparkles, Calendar, Check } from 'lucide-react';
+import { BedDouble } from 'lucide-react';
 
 interface RoomOverviewProps {
   rooms: Room[];
 }
-
-const statusConfig: Record<RoomStatus, { 
-  label: string; 
-  color: string; 
-  bgColor: string;
-  icon: React.ElementType;
-}> = {
-  available: { 
-    label: 'Disponible', 
-    color: 'text-emerald-600', 
-    bgColor: 'bg-emerald-100 border-emerald-200',
-    icon: Check
-  },
-  occupied: { 
-    label: 'Occupée', 
-    color: 'text-blue-600', 
-    bgColor: 'bg-blue-100 border-blue-200',
-    icon: BedDouble
-  },
-  cleaning: { 
-    label: 'Nettoyage', 
-    color: 'text-purple-600', 
-    bgColor: 'bg-purple-100 border-purple-200',
-    icon: Sparkles
-  },
-  maintenance: { 
-    label: 'Maintenance', 
-    color: 'text-red-600', 
-    bgColor: 'bg-red-100 border-red-200',
-    icon: Wrench
-  },
-  reserved: { 
-    label: 'Réservée', 
-    color: 'text-amber-600', 
-    bgColor: 'bg-amber-100 border-amber-200',
-    icon: Calendar
-  },
-};
 
 const typeLabels: Record<string, string> = {
   standard: 'Std',
@@ -53,56 +15,32 @@ const typeLabels: Record<string, string> = {
 };
 
 const RoomOverview = ({ rooms }: RoomOverviewProps) => {
-  const groupedByFloor = rooms.reduce((acc, room) => {
-    if (!acc[room.floor]) acc[room.floor] = [];
-    acc[room.floor].push(room);
-    return acc;
-  }, {} as Record<number, Room[]>);
-
   return (
     <div className="card-elevated p-6">
       <div className="mb-6 flex items-center justify-between">
         <h3 className="font-display text-lg font-semibold">Aperçu des Chambres</h3>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(statusConfig).map(([status, config]) => (
-            <div key={status} className="flex items-center gap-1.5">
-              <div className={cn("h-3 w-3 rounded-full", config.bgColor)} />
-              <span className="text-xs text-muted-foreground">{config.label}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
-      <div className="space-y-6">
-        {Object.entries(groupedByFloor).sort(([a], [b]) => Number(a) - Number(b)).map(([floor, floorRooms]) => (
-          <div key={floor}>
-            <h4 className="mb-3 text-sm font-medium text-muted-foreground">
-              Étage {floor}
-            </h4>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
-              {floorRooms.map((room) => {
-                const config = statusConfig[room.status];
-                const Icon = config.icon;
-                return (
-                  <button
-                    key={room.id}
-                    className={cn(
-                      "group relative flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all duration-200 hover:scale-105 hover:shadow-lg",
-                      config.bgColor
-                    )}
-                  >
-                    <Icon className={cn("mb-1 h-5 w-5", config.color)} />
-                    <span className="font-display text-lg font-semibold text-foreground">
-                      {room.number}
-                    </span>
-                    <span className={cn("text-xs font-medium", config.color)}>
-                      {typeLabels[room.type] || room.type}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+        {rooms.map((room) => (
+          <button
+            key={room.id}
+            className={cn(
+              "group relative flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all duration-200 hover:scale-105 hover:shadow-lg",
+              "bg-emerald-100 border-emerald-200"
+            )}
+          >
+            <BedDouble className="mb-1 h-5 w-5 text-emerald-600" />
+            <span className="font-display text-lg font-semibold text-foreground">
+              {room.number}
+            </span>
+            <span className="text-xs font-medium text-emerald-600">
+              {typeLabels[room.type] || room.type}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {room.price}€
+            </span>
+          </button>
         ))}
       </div>
     </div>

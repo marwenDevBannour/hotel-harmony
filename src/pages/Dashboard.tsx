@@ -24,15 +24,6 @@ const Dashboard = () => {
 
   const isLoading = roomsLoading || statsLoading || reservationsLoading || arrivalsLoading || departuresLoading;
 
-  // Calculate today's revenue (simplified)
-  const todayRevenue = reservations
-    ?.filter(r => r.status === 'checked_in')
-    .reduce((acc, r) => acc + Number(r.total_amount), 0) || 0;
-
-  const averageRate = reservations && reservations.length > 0
-    ? Math.round(reservations.reduce((acc, r) => acc + Number(r.total_amount), 0) / reservations.length)
-    : 0;
-
   return (
     <MainLayout 
       title="Tableau de Bord" 
@@ -87,11 +78,9 @@ const Dashboard = () => {
             <Skeleton className="h-32 w-full rounded-xl" />
           ) : (
             <StatCard
-              title="Revenu Actif"
-              value={`${todayRevenue.toLocaleString('fr-FR')} €`}
-              subtitle={`Moy. ${averageRate} €/rés.`}
+              title="Réservations"
+              value={reservations?.length || 0}
               icon={DollarSign}
-              trend={{ value: 12, positive: true }}
             />
           )}
         </div>

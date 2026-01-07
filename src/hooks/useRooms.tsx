@@ -1,15 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roomsApi, Room as ApiRoom, RoomInput } from '@/services/api';
 
-// Frontend Room type
-export interface RoomData {
-  id: number;
-  number: string;
-  type: string;
-  capacity: number;
-  price: number;
-  hotelId?: number;
-}
+// Re-export types
+export type { RoomInput };
+export type Room = ApiRoom;
 
 export const useRooms = () => {
   return useQuery({
