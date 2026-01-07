@@ -27,8 +27,35 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Erreur serveur' }));
-    throw new Error(error.message || `Erreur HTTP: ${response.status}`);
+    const contentType = response.headers.get('content-type') || '';
+    let message = `Erreur HTTP: ${response.status}`;
+
+    if (contentType.includes('application/json')) {
+      const data = await response.json().catch(() => null);
+      if (data && typeof data === 'object') {
+        const anyData = data as any;
+        if (typeof anyData.message === 'string' && anyData.message.trim()) {
+          message = anyData.message;
+        } else if (typeof anyData.error === 'string' && anyData.error.trim()) {
+          message = anyData.error;
+        }
+      }
+    } else {
+      const text = await response.text().catch(() => '');
+      if (text.trim()) message = text.slice(0, 300);
+    }
+
+    // Si le token est invalide/expiré, on force une reconnexion
+    if (response.status === 401) {
+      localStorage.removeItem('auth_token');
+      message = message === 'Erreur HTTP: 401' ? 'Session expirée. Veuillez vous reconnecter.' : message;
+    }
+
+    if (response.status === 403) {
+      message = message === 'Erreur HTTP: 403' ? 'Accès refusé (403). Droits insuffisants ou configuration sécurité.' : message;
+    }
+
+    throw new Error(message);
   }
 
   // Pour les réponses vides (204 No Content)
