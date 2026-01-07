@@ -27,12 +27,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, ShoppingCart } from "lucide-react";
-import { useMenuItems, useRestaurantTables, useCreateOrder, RestaurantTable, MenuItem, MenuCategory } from "@/hooks/useRestaurant";
-import { useRooms } from "@/hooks/useRooms";
-import { useGuests } from "@/hooks/useGuests";
+import { 
+  useMenuItems, 
+  useRestaurantTables, 
+  useCreateOrder, 
+  RestaurantTable, 
+  MenuItem, 
+  MenuCategory 
+} from "@/hooks/useRestaurant";
+import { useRooms, Room } from "@/hooks/useRooms";
+import { useGuests, Guest } from "@/hooks/useGuests";
 import { toast } from "@/hooks/use-toast";
 
 const orderSchema = z.object({
@@ -136,11 +142,6 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
     return tables.filter((t) => t.status === "available" || t.id === preselectedTable?.id);
   }, [tables, preselectedTable]);
 
-  // Occupied rooms for room service
-  const occupiedRooms = useMemo(() => {
-    return rooms.filter((r) => r.status === "occupied");
-  }, [rooms]);
-
   // Calculate totals
   const subtotal = useMemo(() => {
     return selectedItems.reduce((acc, item) => acc + item.quantity * item.unit_price, 0);
@@ -226,20 +227,21 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
       await createOrder.mutateAsync({
         order: {
           order_type: data.order_type,
-          table_id: data.order_type === "dine_in" ? data.table_id : null,
-          room_id: data.order_type === "room_service" ? data.room_id : null,
-          guest_id: data.guest_id || null,
-          notes: data.notes || null,
+          table_id: data.order_type === "dine_in" ? data.table_id : undefined,
+          room_id: data.order_type === "room_service" ? data.room_id : undefined,
+          guest_id: data.guest_id || undefined,
+          notes: data.notes || undefined,
           subtotal,
           tax_amount: taxAmount,
           total_amount: totalAmount,
+          status: 'pending',
         },
         items: selectedItems.map((item) => ({
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
           unit_price: item.unit_price,
           total_price: item.quantity * item.unit_price,
-          notes: item.notes || null,
+          notes: item.notes || undefined,
         })),
       });
 
@@ -341,8 +343,8 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {occupiedRooms.map((room) => (
-                                <SelectItem key={room.id} value={room.id}>
+                              {rooms?.map((room) => (
+                                <SelectItem key={room.id} value={String(room.id)}>
                                   Chambre {room.number} - {room.type}
                                 </SelectItem>
                               ))}
@@ -370,9 +372,9 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {guests.map((guest) => (
-                            <SelectItem key={guest.id} value={guest.id}>
-                              {guest.first_name} {guest.last_name}
+                          {guests?.map((guest) => (
+                            <SelectItem key={guest.id} value={String(guest.id)}>
+                              {guest.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -389,7 +391,7 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                     {Object.entries(menuByCategory).map(([category, items]) => (
                       <div key={category} className="mb-4">
                         <h4 className="font-medium text-sm text-muted-foreground mb-2">
-                          {CATEGORY_LABELS[category] || category}
+                          {CATEGORY_LABELS[category as MenuCategory] || category}
                         </h4>
                         <div className="space-y-2">
                           {items.map((item) => {
@@ -402,7 +404,7 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                                 <div className="flex-1">
                                   <p className="font-medium text-sm">{item.name}</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {item.price.toLocaleString()} FCFA
+                                    {item.price.toLocaleString()} €
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -438,6 +440,11 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                         </div>
                       </div>
                     ))}
+                    {Object.keys(menuByCategory).length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Aucun article disponible
+                      </p>
+                    )}
                   </ScrollArea>
                 </div>
               </div>
@@ -465,11 +472,11 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                             <div>
                               <p className="font-medium text-sm">{item.menu_item.name}</p>
                               <p className="text-sm text-muted-foreground">
-                                {item.quantity} x {item.unit_price.toLocaleString()} FCFA
+                                {item.quantity} x {item.unit_price.toLocaleString()} €
                               </p>
                             </div>
                             <p className="font-semibold">
-                              {(item.quantity * item.unit_price).toLocaleString()} FCFA
+                              {(item.quantity * item.unit_price).toLocaleString()} €
                             </p>
                           </div>
                           <Input
@@ -484,25 +491,25 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                   )}
                 </ScrollArea>
 
-                <Separator />
-
                 {/* Totals */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Sous-total</span>
-                    <span>{subtotal.toLocaleString()} FCFA</span>
+                {selectedItems.length > 0 && (
+                  <div className="border rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Sous-total</span>
+                      <span>{subtotal.toLocaleString()} €</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>TVA (10%)</span>
+                      <span>{taxAmount.toLocaleString()} €</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg border-t pt-2">
+                      <span>Total</span>
+                      <span>{totalAmount.toLocaleString()} €</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Taxes (10%)</span>
-                    <span>{taxAmount.toLocaleString()} FCFA</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-lg">
-                    <span>Total TTC</span>
-                    <span>{totalAmount.toLocaleString()} FCFA</span>
-                  </div>
-                </div>
+                )}
 
+                {/* Notes */}
                 <FormField
                   control={form.control}
                   name="notes"
@@ -511,7 +518,7 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
                       <FormLabel>Notes générales</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Instructions spéciales pour la commande..."
+                          placeholder="Notes pour la commande..."
                           {...field}
                         />
                       </FormControl>
@@ -522,15 +529,15 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
               </div>
             </div>
 
-            <Separator className="my-4" />
-
-            <div className="flex justify-end gap-2">
+            {/* Footer */}
+            <div className="flex justify-end gap-2 pt-4 border-t mt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Annuler
               </Button>
-              <Button
-                type="submit"
-                disabled={selectedItems.length === 0 || createOrder.isPending}
+              <Button 
+                type="submit" 
+                variant="gold" 
+                disabled={createOrder.isPending || selectedItems.length === 0}
               >
                 {createOrder.isPending ? "Création..." : "Créer la commande"}
               </Button>

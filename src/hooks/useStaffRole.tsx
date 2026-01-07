@@ -41,7 +41,7 @@ export const useStaffRole = () => {
     }
 
     const loadRoles = async () => {
-      const userRoles = await fetchStaffRoles(user.id);
+      const userRoles = await fetchStaffRoles(String(user.id));
       setRoles(userRoles);
       setIsStaff(userRoles.length > 0);
       setLoading(false);

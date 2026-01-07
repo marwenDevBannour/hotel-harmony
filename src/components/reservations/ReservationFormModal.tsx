@@ -81,7 +81,7 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
   }, [reservation, form]);
 
   const createMutation = useMutation({
-    mutationFn: (values: ReservationFormValues) => reservationsApi.create(values),
+    mutationFn: (values: ReservationFormValues) => reservationsApi.create(values as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
       toast.success('Réservation créée avec succès');

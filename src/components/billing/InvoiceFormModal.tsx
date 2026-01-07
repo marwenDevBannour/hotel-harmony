@@ -64,9 +64,9 @@ const InvoiceFormModal = ({ open, onOpenChange, invoice }: InvoiceFormModalProps
   const mutation = useMutation({
     mutationFn: async (data: InvoiceFormData) => {
       if (isEditing) {
-        return invoicesApi.update(invoice.id, data);
+        return invoicesApi.update(invoice.id, data as any);
       } else {
-        return invoicesApi.create(data);
+        return invoicesApi.create(data as any);
       }
     },
     onSuccess: () => {
