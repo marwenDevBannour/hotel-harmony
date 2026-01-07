@@ -527,36 +527,36 @@ export const structuresApi = {
 // Admin API Endpoints
 // =====================
 
-// API Modules
+// API Modules - correspond à /api/v1/modules du backend
 export const modulesApi = {
-  getAll: () => fetchApi<Module[]>('/admin/modules'),
-  getById: (id: number) => fetchApi<Module>(`/admin/modules/${id}`),
-  create: (data: ModuleInput) => fetchApi<Module>('/admin/modules', {
+  getAll: () => fetchApi<Module[]>('/v1/modules'),
+  getById: (id: number) => fetchApi<Module>(`/v1/modules/${id}`),
+  create: (data: ModuleInput) => fetchApi<Module>('/v1/modules', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  update: (id: number, data: Partial<ModuleInput>) => fetchApi<Module>(`/admin/modules/${id}`, {
+  update: (id: number, data: Partial<ModuleInput>) => fetchApi<Module>(`/v1/modules/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
-  delete: (id: number) => fetchApi<void>(`/admin/modules/${id}`, {
+  delete: (id: number) => fetchApi<string>(`/v1/modules/${id}`, {
     method: 'DELETE',
   }),
 };
 
-// API SousModules
+// API SousModules - correspond à /api/v1/sousModules du backend
 export const sousModulesApi = {
-  getAll: () => fetchApi<SousModule[]>('/admin/sous-modules'),
-  getById: (id: number) => fetchApi<SousModule>(`/admin/sous-modules/${id}`),
-  create: (data: SousModuleInput) => fetchApi<SousModule>('/admin/sous-modules', {
+  getAll: () => fetchApi<SousModule[]>('/v1/sousModules'),
+  getById: (id: number) => fetchApi<SousModule>(`/v1/sousModules/${id}`),
+  create: (data: SousModuleInput) => fetchApi<SousModule>('/v1/sousModules', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  update: (id: number, data: Partial<SousModuleInput>) => fetchApi<SousModule>(`/admin/sous-modules/${id}`, {
+  update: (id: number, data: Partial<SousModuleInput>) => fetchApi<SousModule>(`/v1/sousModules/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
-  delete: (id: number) => fetchApi<void>(`/admin/sous-modules/${id}`, {
+  delete: (id: number) => fetchApi<string>(`/v1/sousModules/${id}`, {
     method: 'DELETE',
   }),
 };

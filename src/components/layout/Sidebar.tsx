@@ -13,11 +13,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Hotel,
-  LogOut
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useModules } from '@/hooks/useModules';
+import { getIconByCode } from '@/lib/iconMapping';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface NavItem {
   icon: React.ElementType;
@@ -26,27 +34,40 @@ interface NavItem {
   badge?: number;
 }
 
-const navItems: NavItem[] = [
+// Éléments de navigation fixes (menu hybride)
+const fixedNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Tableau de Bord', href: '/' },
   { icon: BedDouble, label: 'Chambres', href: '/rooms' },
   { icon: Calendar, label: 'Réservations', href: '/reservations' },
   { icon: Users, label: 'Clients', href: '/guests' },
   { icon: Receipt, label: 'Facturation', href: '/billing' },
-  { icon: UserCog, label: 'Personnel', href: '/staff' },
   { icon: UtensilsCrossed, label: 'Restauration', href: '/restaurant' },
+];
+
+const bottomNavItems: NavItem[] = [
+  { icon: UserCog, label: 'Personnel', href: '/staff' },
   { icon: BarChart3, label: 'Rapports', href: '/reports' },
   { icon: Settings, label: 'Paramètres', href: '/settings' },
 ];
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [openModules, setOpenModules] = useState<Record<number, boolean>>({});
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { modules, isLoading: modulesLoading } = useModules();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const toggleModule = (moduleId: number) => {
+    setOpenModules(prev => ({
+      ...prev,
+      [moduleId]: !prev[moduleId]
+    }));
   };
 
   const userInitials = user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U';
@@ -54,10 +75,39 @@ const Sidebar = () => {
     ? `${user.firstName} ${user.lastName || ''}`
     : user?.email?.split('@')[0] || 'Utilisateur';
 
+  const renderNavItem = (item: NavItem) => {
+    const isActive = location.pathname === item.href;
+    return (
+      <Link
+        key={item.href}
+        to={item.href}
+        className={cn(
+          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+          isActive 
+            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-gold" 
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        )}
+      >
+        <item.icon className={cn(
+          "h-5 w-5 shrink-0 transition-transform duration-200",
+          !isActive && "group-hover:scale-110"
+        )} />
+        {!collapsed && (
+          <span className="animate-fade-in truncate">{item.label}</span>
+        )}
+        {!collapsed && item.badge && (
+          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground">
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <aside 
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 ease-out",
+        "fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 ease-out flex flex-col",
         collapsed ? "w-20" : "w-64"
       )}
     >
@@ -88,40 +138,92 @@ const Sidebar = () => {
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex flex-col gap-1 p-4">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                isActive 
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-gold" 
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              )}
-            >
-              <item.icon className={cn(
-                "h-5 w-5 shrink-0 transition-transform duration-200",
-                !isActive && "group-hover:scale-110"
-              )} />
-              {!collapsed && (
-                <span className="animate-fade-in truncate">{item.label}</span>
-              )}
-              {!collapsed && item.badge && (
-                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground">
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+      {/* Navigation principale */}
+      <nav className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-col gap-1">
+          {fixedNavItems.map(renderNavItem)}
+        </div>
+
+        {/* Modules dynamiques */}
+        {!modulesLoading && modules.length > 0 && (
+          <div className="mt-6">
+            {!collapsed && (
+              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+                Modules
+              </p>
+            )}
+            <div className="flex flex-col gap-1">
+              {modules.map((module) => {
+                const ModuleIcon = getIconByCode(module.codeM);
+                const isOpen = openModules[module.id] || false;
+                const hasSousModules = module.sousModules && module.sousModules.length > 0;
+
+                if (!hasSousModules || collapsed) {
+                  // Afficher comme un lien simple
+                  return (
+                    <Link
+                      key={module.id}
+                      to={`/module/${module.codeM.toLowerCase()}`}
+                      className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
+                    >
+                      <ModuleIcon className="h-5 w-5 shrink-0 group-hover:scale-110 transition-transform duration-200" />
+                      {!collapsed && (
+                        <span className="animate-fade-in truncate">{module.libelle}</span>
+                      )}
+                    </Link>
+                  );
+                }
+
+                // Afficher comme collapsible avec sous-modules
+                return (
+                  <Collapsible
+                    key={module.id}
+                    open={isOpen}
+                    onOpenChange={() => toggleModule(module.id)}
+                  >
+                    <CollapsibleTrigger className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200">
+                      <ModuleIcon className="h-5 w-5 shrink-0 group-hover:scale-110 transition-transform duration-200" />
+                      <span className="flex-1 text-left truncate">{module.libelle}</span>
+                      <ChevronDown className={cn(
+                        "h-4 w-4 shrink-0 transition-transform duration-200",
+                        isOpen && "rotate-180"
+                      )} />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pl-4">
+                      {module.sousModules.map((sousModule) => {
+                        const SousModuleIcon = getIconByCode(sousModule.codeS);
+                        return (
+                          <Link
+                            key={sousModule.id}
+                            to={`/module/${module.codeM.toLowerCase()}/${sousModule.codeS.toLowerCase()}`}
+                            className="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
+                          >
+                            <SousModuleIcon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{sousModule.libelle}</span>
+                          </Link>
+                        );
+                      })}
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Navigation inférieure */}
+        <div className="mt-6 flex flex-col gap-1">
+          {!collapsed && (
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+              Administration
+            </p>
+          )}
+          {bottomNavItems.map(renderNavItem)}
+        </div>
       </nav>
 
       {/* User */}
-      <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border p-4">
+      <div className="border-t border-sidebar-border p-4">
         <div className={cn(
           "flex items-center gap-3",
           collapsed && "justify-center"
