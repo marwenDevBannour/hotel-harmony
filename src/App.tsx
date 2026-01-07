@@ -12,6 +12,7 @@ import Billing from "./pages/Billing";
 import Restaurant from "./pages/Restaurant";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
+import ModulePage from "./pages/ModulePage";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +56,8 @@ const App = () => (
           <Route path="/staff" element={<ProtectedRoute><ComingSoon title="Personnel" description="Gestion du personnel et des horaires" /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ComingSoon title="Rapports" description="Statistiques et analyses" /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/module/:moduleCode" element={<ProtectedRoute><ModulePage /></ProtectedRoute>} />
+          <Route path="/module/:moduleCode/:sousModuleCode" element={<ProtectedRoute><ModulePage /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
