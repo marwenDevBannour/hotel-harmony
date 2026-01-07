@@ -1,11 +1,14 @@
 import { useParams, Link } from 'react-router-dom';
-import { ChevronRight, Folder, AlertCircle } from 'lucide-react';
+import { ChevronRight, Folder, AlertCircle, Component } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { useModules } from '@/hooks/useModules';
 import { getIconByCode } from '@/lib/iconMapping';
+import { getComponentByCode, hasComponent } from '@/lib/componentRegistry';
+import '@/lib/initComponentRegistry'; // Initialise le registre
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -120,34 +123,54 @@ export default function ModulePage() {
 
         {/* Content */}
         {currentSousModule ? (
-          // Afficher le contenu du sous-module
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                  <SousModuleIcon className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <CardTitle>{currentSousModule.libelle}</CardTitle>
-                  <CardDescription>
-                    Code: {currentSousModule.codeS}
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                <SousModuleIcon className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                <p className="text-lg font-medium">Contenu du sous-module</p>
-                <p className="text-sm mt-2">
-                  Le contenu spécifique pour "{currentSousModule.libelle}" sera affiché ici.
-                </p>
-                <p className="text-xs mt-4">
-                  Période: {new Date(currentSousModule.ddeb).toLocaleDateString('fr-FR')} - {new Date(currentSousModule.dfin).toLocaleDateString('fr-FR')}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          // Afficher le composant correspondant au code du sous-module
+          (() => {
+            const DynamicComponent = getComponentByCode(currentSousModule.codeS);
+            
+            if (DynamicComponent) {
+              return (
+                <DynamicComponent 
+                  sousModule={currentSousModule} 
+                  moduleCode={moduleCode || ''} 
+                />
+              );
+            }
+
+            // Fallback si aucun composant n'est enregistré
+            return (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                      <SousModuleIcon className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle>{currentSousModule.libelle}</CardTitle>
+                      <CardDescription>
+                        Code: {currentSousModule.codeS}
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className="gap-1">
+                      <Component className="h-3 w-3" />
+                      Composant non défini
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                    <SousModuleIcon className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p className="text-lg font-medium">Composant non configuré</p>
+                    <p className="text-sm mt-2">
+                      Aucun composant n'est enregistré pour le code "{currentSousModule.codeS}".
+                    </p>
+                    <p className="text-xs mt-4">
+                      Ajoutez un mapping dans <code className="bg-muted px-1 py-0.5 rounded">src/lib/initComponentRegistry.ts</code>
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()
         ) : (
           // Afficher la liste des sous-modules du module
           <>
