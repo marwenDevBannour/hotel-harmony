@@ -85,7 +85,7 @@ export function RoomFormModal({ open, onOpenChange, room }: RoomFormModalProps) 
   }, [room, form]);
 
   const createMutation = useMutation({
-    mutationFn: (values: RoomFormValues) => roomsApi.create(values),
+    mutationFn: (values: RoomFormValues) => roomsApi.create(values as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
       toast.success('Chambre créée avec succès');

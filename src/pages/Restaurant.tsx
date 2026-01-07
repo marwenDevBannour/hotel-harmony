@@ -497,11 +497,7 @@ const Restaurant = () => {
           ) : (
             <div className="grid gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {filteredTables?.map((table, index) => (
-                <div 
-                  key={table.id}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${index * 30}ms` }}
-                >
+                <div key={table.id} className="animate-slide-up" style={{ animationDelay: `${index * 30}ms` }}>
                   <TableCard table={table} onNewOrder={handleNewOrder} />
                 </div>
               ))}
@@ -512,11 +508,6 @@ const Restaurant = () => {
             <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
               <Users className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="text-lg font-medium text-muted-foreground">Aucune table trouvée</p>
-              {hasTableFilters && (
-                <Button variant="link" onClick={clearTableFilters} className="mt-2">
-                  Effacer les filtres
-                </Button>
-              )}
             </div>
           )}
         </TabsContent>
@@ -533,29 +524,31 @@ const Restaurant = () => {
               onFilterChange={setOrderFilter}
               onClearFilters={clearOrderFilters}
               hasActiveFilters={hasOrderFilters}
-              onExportCSV={() => exportToCSV(filteredOrders || [], ordersExportColumns, 'commandes')}
-              onExportExcel={() => exportToExcel(filteredOrders || [], ordersExportColumns, 'commandes')}
+              onExportCSV={() => exportToCSV(filteredOrders || [], ordersExportColumns, 'orders')}
+              onExportExcel={() => exportToExcel(filteredOrders || [], ordersExportColumns, 'orders')}
             />
-            <Button variant="gold" className="gap-2" onClick={handleRoomService}>
-              <Plus className="h-4 w-4" />
-              Room Service
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleRoomService}>
+                <BedDouble className="h-4 w-4" />
+                Room Service
+              </Button>
+              <Button variant="gold" className="gap-2" onClick={() => { setOrderPreselectedTable(null); setOrderModalOpen(true); }}>
+                <Plus className="h-4 w-4" />
+                Nouvelle Commande
+              </Button>
+            </div>
           </div>
 
           {ordersLoading ? (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-64 w-full rounded-xl" />
               ))}
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredOrders?.map((order, index) => (
-                <div 
-                  key={order.id}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
+                <div key={order.id} className="animate-slide-up" style={{ animationDelay: `${index * 30}ms` }}>
                   <OrderCard 
                     order={order} 
                     onStatusChange={handleStatusChange}
@@ -569,12 +562,7 @@ const Restaurant = () => {
           {!ordersLoading && filteredOrders?.length === 0 && (
             <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
               <ChefHat className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-lg font-medium text-muted-foreground">Aucune commande trouvée</p>
-              {hasOrderFilters && (
-                <Button variant="link" onClick={clearOrderFilters} className="mt-2">
-                  Effacer les filtres
-                </Button>
-              )}
+              <p className="text-lg font-medium text-muted-foreground">Aucune commande active</p>
             </div>
           )}
         </TabsContent>
@@ -601,19 +589,15 @@ const Restaurant = () => {
           </div>
 
           {menuLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(9)].map((_, i) => (
                 <Skeleton key={i} className="h-32 w-full rounded-xl" />
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredMenu?.map((item, index) => (
-                <div 
-                  key={item.id}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${index * 30}ms` }}
-                >
+                <div key={item.id} className="animate-slide-up" style={{ animationDelay: `${index * 30}ms` }}>
                   <MenuItemCard item={item} />
                 </div>
               ))}
@@ -624,31 +608,25 @@ const Restaurant = () => {
             <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
               <Utensils className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="text-lg font-medium text-muted-foreground">Aucun article trouvé</p>
-              {hasMenuFilters && (
-                <Button variant="link" onClick={clearMenuFilters} className="mt-2">
-                  Effacer les filtres
-                </Button>
-              )}
             </div>
           )}
         </TabsContent>
       </Tabs>
 
+      {/* Modals */}
       <TableFormModal 
         open={tableModalOpen} 
-        onOpenChange={setTableModalOpen}
-        table={selectedTable}
+        onOpenChange={setTableModalOpen} 
+        table={selectedTable} 
       />
-
       <MenuItemFormModal 
         open={menuModalOpen} 
-        onOpenChange={setMenuModalOpen}
-        menuItem={selectedMenuItem}
+        onOpenChange={setMenuModalOpen} 
+        menuItem={selectedMenuItem} 
       />
-
       <OrderFormModal 
         open={orderModalOpen} 
-        onOpenChange={setOrderModalOpen}
+        onOpenChange={setOrderModalOpen} 
         preselectedTable={orderPreselectedTable}
       />
     </MainLayout>

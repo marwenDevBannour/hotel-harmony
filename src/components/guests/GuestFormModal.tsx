@@ -66,7 +66,7 @@ export function GuestFormModal({ open, onOpenChange, guest }: GuestFormModalProp
   }, [guest, form]);
 
   const createMutation = useMutation({
-    mutationFn: (values: GuestFormValues) => guestsApi.create(values),
+    mutationFn: (values: GuestFormValues) => guestsApi.create(values as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
       toast.success('Client créé avec succès');
