@@ -32,14 +32,16 @@ import { Plus, Minus, ShoppingCart } from "lucide-react";
 import { 
   useMenuItems, 
   useRestaurantTables, 
-  useCreateOrder, 
-  RestaurantTable, 
-  MenuItem, 
-  MenuCategory 
+  useCreateOrder,
+  RestaurantTable,
+  MenuItem,
+  MenuCategory,
 } from "@/hooks/useRestaurant";
-import { useRooms, Room } from "@/hooks/useRooms";
-import { useGuests, Guest } from "@/hooks/useGuests";
+import { useRooms } from "@/hooks/useRooms";
+import { useGuests } from "@/hooks/useGuests";
 import { toast } from "@/hooks/use-toast";
+import { Room } from "@/services/api";
+import { Guest } from "@/services/api";
 
 const orderSchema = z.object({
   order_type: z.enum(["dine_in", "room_service", "takeaway"]),
@@ -127,8 +129,9 @@ export function OrderFormModal({ open, onOpenChange, preselectedTable }: OrderFo
 
   // Group menu items by category
   const menuByCategory = useMemo(() => {
-    const available = menuItems.filter((item) => item.available);
-    return available.reduce((acc, item) => {
+    if (!menuItems || !Array.isArray(menuItems)) return {} as Record<string, MenuItem[]>;
+    const available = menuItems.filter((item: MenuItem) => item.available);
+    return available.reduce((acc: Record<string, MenuItem[]>, item: MenuItem) => {
       if (!acc[item.category]) {
         acc[item.category] = [];
       }
