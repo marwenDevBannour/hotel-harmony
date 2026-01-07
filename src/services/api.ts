@@ -39,19 +39,307 @@ async function fetchApi<T>(
   return response.json();
 }
 
+// =====================
+// Types pour l'API (correspondant aux entités Spring Boot)
+// =====================
+
+// Admin entities
+export interface Users {
+  id: number;
+  codeUser: string;
+  lastName: string;
+  firstName: string;
+  matricule: string;
+  dateNaiss: string;
+  email: string;
+  badmin: boolean;
+}
+
+export interface Module {
+  id: number;
+  codeM: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+}
+
+export interface SousModule {
+  id: number;
+  codeS: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+  module: Module;
+}
+
+export interface Evnmt {
+  id: number;
+  codeEvnmt: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+  bactif: boolean;
+  sousModule: SousModule;
+}
+
+// Structure entities
+export interface NatureStruct {
+  id: number;
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+}
+
+export interface Structure {
+  id: number;
+  parent?: Structure;
+  ladr: string;
+  valeurX?: number;
+  valeurY?: number;
+  valeurZ?: number;
+  natureStruct: NatureStruct;
+  codePostale?: number;
+}
+
+// Hotel entities
+export interface Hotel {
+  id: number;
+  name: string;
+  idaddress?: Structure;
+  phone: string;
+  email: string;
+  adresse: string;
+  rooms?: Room[];
+  employees?: Employee[];
+}
+
+export interface Room {
+  id: number;
+  number: string;
+  type: string;
+  capacity: number;
+  price: number;
+  hotel?: Hotel;
+  reservations?: Reservation[];
+  housekeepings?: Housekeeping[];
+}
+
+export interface Guest {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  reservations?: Reservation[];
+}
+
+export interface Employee {
+  id: number;
+  name: string;
+  role: string;
+  email: string;
+  hotel?: Hotel;
+}
+
+export interface Reservation {
+  id: number;
+  checkInDate: string;
+  checkOutDate: string;
+  guest?: Guest;
+  room?: Room;
+  invoice?: Invoice;
+}
+
+export interface Invoice {
+  id: number;
+  issueDate: string;
+  amount: number;
+  paid: boolean;
+  reservation?: Reservation;
+  payment?: Payment;
+}
+
+export interface Payment {
+  id: number;
+  paymentDate: string;
+  method: string;
+  amount: number;
+  invoice?: Invoice;
+}
+
+export interface Housekeeping {
+  id: number;
+  date: string;
+  status: string;
+  room?: Room;
+  employee?: Employee;
+}
+
+export interface Maintenance {
+  id: number;
+  scheduledDate: string;
+  description: string;
+  status: string;
+  room?: Room;
+  technician?: Employee;
+}
+
+// =====================
+// Input types pour les créations/mises à jour
+// =====================
+
+export interface RoomInput {
+  number: string;
+  type: string;
+  capacity: number;
+  price: number;
+  hotelId?: number;
+}
+
+export interface GuestInput {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface ReservationInput {
+  checkInDate: string;
+  checkOutDate: string;
+  guestId: number;
+  roomId: number;
+}
+
+export interface InvoiceInput {
+  issueDate: string;
+  amount: number;
+  paid: boolean;
+  reservationId: number;
+}
+
+export interface PaymentInput {
+  paymentDate: string;
+  method: string;
+  amount: number;
+  invoiceId: number;
+}
+
+export interface EmployeeInput {
+  name: string;
+  role: string;
+  email: string;
+  hotelId?: number;
+}
+
+export interface HotelInput {
+  name: string;
+  phone: string;
+  email: string;
+  adresse: string;
+  idaddressId?: number;
+}
+
+export interface HousekeepingInput {
+  date: string;
+  status: string;
+  roomId: number;
+  employeeId: number;
+}
+
+export interface MaintenanceInput {
+  scheduledDate: string;
+  description: string;
+  status: string;
+  roomId: number;
+  technicianId: number;
+}
+
+export interface NatureStructInput {
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+}
+
+export interface StructureInput {
+  parentId?: number;
+  ladr: string;
+  valeurX?: number;
+  valeurY?: number;
+  valeurZ?: number;
+  natureStructId: number;
+  codePostale?: number;
+}
+
+export interface ModuleInput {
+  codeM: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+}
+
+export interface SousModuleInput {
+  codeS: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+  moduleId: number;
+}
+
+export interface EvnmtInput {
+  codeEvnmt: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string;
+  bactif: boolean;
+  sousModuleId: number;
+}
+
+export interface UsersInput {
+  codeUser: string;
+  lastName: string;
+  firstName: string;
+  matricule: string;
+  dateNaiss: string;
+  email: string;
+  badmin: boolean;
+}
+
+// Auth types
+export interface User {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+export interface SignupInput {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+}
+
+// =====================
+// API Endpoints
+// =====================
+
 // API Rooms
 export const roomsApi = {
   getAll: () => fetchApi<Room[]>('/rooms'),
-  getById: (id: string) => fetchApi<Room>(`/rooms/${id}`),
-  create: (room: Omit<Room, 'id'>) => fetchApi<Room>('/rooms', {
+  getById: (id: number) => fetchApi<Room>(`/rooms/${id}`),
+  create: (room: RoomInput) => fetchApi<Room>('/rooms', {
     method: 'POST',
     body: JSON.stringify(room),
   }),
-  update: (id: string, room: Partial<Room>) => fetchApi<Room>(`/rooms/${id}`, {
+  update: (id: number, room: Partial<RoomInput>) => fetchApi<Room>(`/rooms/${id}`, {
     method: 'PUT',
     body: JSON.stringify(room),
   }),
-  delete: (id: string) => fetchApi<void>(`/rooms/${id}`, {
+  delete: (id: number) => fetchApi<void>(`/rooms/${id}`, {
     method: 'DELETE',
   }),
 };
@@ -59,16 +347,16 @@ export const roomsApi = {
 // API Guests
 export const guestsApi = {
   getAll: () => fetchApi<Guest[]>('/guests'),
-  getById: (id: string) => fetchApi<Guest>(`/guests/${id}`),
-  create: (guest: Omit<Guest, 'id'>) => fetchApi<Guest>('/guests', {
+  getById: (id: number) => fetchApi<Guest>(`/guests/${id}`),
+  create: (guest: GuestInput) => fetchApi<Guest>('/guests', {
     method: 'POST',
     body: JSON.stringify(guest),
   }),
-  update: (id: string, guest: Partial<Guest>) => fetchApi<Guest>(`/guests/${id}`, {
+  update: (id: number, guest: Partial<GuestInput>) => fetchApi<Guest>(`/guests/${id}`, {
     method: 'PUT',
     body: JSON.stringify(guest),
   }),
-  delete: (id: string) => fetchApi<void>(`/guests/${id}`, {
+  delete: (id: number) => fetchApi<void>(`/guests/${id}`, {
     method: 'DELETE',
   }),
 };
@@ -76,16 +364,16 @@ export const guestsApi = {
 // API Reservations
 export const reservationsApi = {
   getAll: () => fetchApi<Reservation[]>('/reservations'),
-  getById: (id: string) => fetchApi<Reservation>(`/reservations/${id}`),
-  create: (reservation: Omit<Reservation, 'id'>) => fetchApi<Reservation>('/reservations', {
+  getById: (id: number) => fetchApi<Reservation>(`/reservations/${id}`),
+  create: (reservation: ReservationInput) => fetchApi<Reservation>('/reservations', {
     method: 'POST',
     body: JSON.stringify(reservation),
   }),
-  update: (id: string, reservation: Partial<Reservation>) => fetchApi<Reservation>(`/reservations/${id}`, {
+  update: (id: number, reservation: Partial<ReservationInput>) => fetchApi<Reservation>(`/reservations/${id}`, {
     method: 'PUT',
     body: JSON.stringify(reservation),
   }),
-  delete: (id: string) => fetchApi<void>(`/reservations/${id}`, {
+  delete: (id: number) => fetchApi<void>(`/reservations/${id}`, {
     method: 'DELETE',
   }),
   getTodayArrivals: () => fetchApi<Reservation[]>('/reservations/today-arrivals'),
@@ -95,76 +383,211 @@ export const reservationsApi = {
 // API Invoices
 export const invoicesApi = {
   getAll: () => fetchApi<Invoice[]>('/invoices'),
-  getById: (id: string) => fetchApi<Invoice>(`/invoices/${id}`),
-  create: (invoice: Omit<Invoice, 'id'>) => fetchApi<Invoice>('/invoices', {
+  getById: (id: number) => fetchApi<Invoice>(`/invoices/${id}`),
+  create: (invoice: InvoiceInput) => fetchApi<Invoice>('/invoices', {
     method: 'POST',
     body: JSON.stringify(invoice),
   }),
-  update: (id: string, invoice: Partial<Invoice>) => fetchApi<Invoice>(`/invoices/${id}`, {
+  update: (id: number, invoice: Partial<InvoiceInput>) => fetchApi<Invoice>(`/invoices/${id}`, {
     method: 'PUT',
     body: JSON.stringify(invoice),
   }),
-  delete: (id: string) => fetchApi<void>(`/invoices/${id}`, {
+  delete: (id: number) => fetchApi<void>(`/invoices/${id}`, {
     method: 'DELETE',
   }),
-  addPayment: (invoiceId: string, payment: PaymentInput) => fetchApi<Payment>(`/invoices/${invoiceId}/payments`, {
+  addPayment: (invoiceId: number, payment: Omit<PaymentInput, 'invoiceId'>) => fetchApi<Payment>(`/invoices/${invoiceId}/payments`, {
     method: 'POST',
     body: JSON.stringify(payment),
   }),
 };
 
-// API Restaurant Tables
-export const restaurantTablesApi = {
-  getAll: () => fetchApi<RestaurantTable[]>('/restaurant/tables'),
-  getById: (id: string) => fetchApi<RestaurantTable>(`/restaurant/tables/${id}`),
-  create: (table: Omit<RestaurantTable, 'id'>) => fetchApi<RestaurantTable>('/restaurant/tables', {
+// API Payments
+export const paymentsApi = {
+  getAll: () => fetchApi<Payment[]>('/payments'),
+  getById: (id: number) => fetchApi<Payment>(`/payments/${id}`),
+  create: (payment: PaymentInput) => fetchApi<Payment>('/payments', {
     method: 'POST',
-    body: JSON.stringify(table),
+    body: JSON.stringify(payment),
   }),
-  update: (id: string, table: Partial<RestaurantTable>) => fetchApi<RestaurantTable>(`/restaurant/tables/${id}`, {
+  update: (id: number, payment: Partial<PaymentInput>) => fetchApi<Payment>(`/payments/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(table),
+    body: JSON.stringify(payment),
   }),
-  updateStatus: (id: string, status: string) => fetchApi<RestaurantTable>(`/restaurant/tables/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
-  }),
-  delete: (id: string) => fetchApi<void>(`/restaurant/tables/${id}`, {
+  delete: (id: number) => fetchApi<void>(`/payments/${id}`, {
     method: 'DELETE',
   }),
 };
 
-// API Menu Items
-export const menuItemsApi = {
-  getAll: () => fetchApi<MenuItem[]>('/restaurant/menu'),
-  getById: (id: string) => fetchApi<MenuItem>(`/restaurant/menu/${id}`),
-  create: (item: Omit<MenuItem, 'id'>) => fetchApi<MenuItem>('/restaurant/menu', {
+// API Employees
+export const employeesApi = {
+  getAll: () => fetchApi<Employee[]>('/employees'),
+  getById: (id: number) => fetchApi<Employee>(`/employees/${id}`),
+  create: (employee: EmployeeInput) => fetchApi<Employee>('/employees', {
     method: 'POST',
-    body: JSON.stringify(item),
+    body: JSON.stringify(employee),
   }),
-  update: (id: string, item: Partial<MenuItem>) => fetchApi<MenuItem>(`/restaurant/menu/${id}`, {
+  update: (id: number, employee: Partial<EmployeeInput>) => fetchApi<Employee>(`/employees/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(item),
+    body: JSON.stringify(employee),
   }),
-  delete: (id: string) => fetchApi<void>(`/restaurant/menu/${id}`, {
+  delete: (id: number) => fetchApi<void>(`/employees/${id}`, {
     method: 'DELETE',
   }),
 };
 
-// API Restaurant Orders
-export const ordersApi = {
-  getAll: () => fetchApi<RestaurantOrder[]>('/restaurant/orders'),
-  getActive: () => fetchApi<RestaurantOrder[]>('/restaurant/orders/active'),
-  getById: (id: string) => fetchApi<RestaurantOrder>(`/restaurant/orders/${id}`),
-  create: (order: CreateOrderInput) => fetchApi<RestaurantOrder>('/restaurant/orders', {
+// API Hotels
+export const hotelsApi = {
+  getAll: () => fetchApi<Hotel[]>('/hotels'),
+  getById: (id: number) => fetchApi<Hotel>(`/hotels/${id}`),
+  create: (hotel: HotelInput) => fetchApi<Hotel>('/hotels', {
     method: 'POST',
-    body: JSON.stringify(order),
+    body: JSON.stringify(hotel),
   }),
-  updateStatus: (id: string, status: string) => fetchApi<RestaurantOrder>(`/restaurant/orders/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
+  update: (id: number, hotel: Partial<HotelInput>) => fetchApi<Hotel>(`/hotels/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(hotel),
   }),
-  delete: (id: string) => fetchApi<void>(`/restaurant/orders/${id}`, {
+  delete: (id: number) => fetchApi<void>(`/hotels/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// API Housekeeping
+export const housekeepingApi = {
+  getAll: () => fetchApi<Housekeeping[]>('/housekeeping'),
+  getById: (id: number) => fetchApi<Housekeeping>(`/housekeeping/${id}`),
+  create: (task: HousekeepingInput) => fetchApi<Housekeeping>('/housekeeping', {
+    method: 'POST',
+    body: JSON.stringify(task),
+  }),
+  update: (id: number, task: Partial<HousekeepingInput>) => fetchApi<Housekeeping>(`/housekeeping/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(task),
+  }),
+  delete: (id: number) => fetchApi<void>(`/housekeeping/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// API Maintenance
+export const maintenanceApi = {
+  getAll: () => fetchApi<Maintenance[]>('/maintenance'),
+  getById: (id: number) => fetchApi<Maintenance>(`/maintenance/${id}`),
+  create: (task: MaintenanceInput) => fetchApi<Maintenance>('/maintenance', {
+    method: 'POST',
+    body: JSON.stringify(task),
+  }),
+  update: (id: number, task: Partial<MaintenanceInput>) => fetchApi<Maintenance>(`/maintenance/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(task),
+  }),
+  delete: (id: number) => fetchApi<void>(`/maintenance/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// API NatureStruct
+export const natureStructApi = {
+  getAll: () => fetchApi<NatureStruct[]>('/nature-structs'),
+  getById: (id: number) => fetchApi<NatureStruct>(`/nature-structs/${id}`),
+  create: (data: NatureStructInput) => fetchApi<NatureStruct>('/nature-structs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: number, data: Partial<NatureStructInput>) => fetchApi<NatureStruct>(`/nature-structs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: number) => fetchApi<void>(`/nature-structs/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// API Structure
+export const structuresApi = {
+  getAll: () => fetchApi<Structure[]>('/structures'),
+  getById: (id: number) => fetchApi<Structure>(`/structures/${id}`),
+  create: (data: StructureInput) => fetchApi<Structure>('/structures', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: number, data: Partial<StructureInput>) => fetchApi<Structure>(`/structures/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: number) => fetchApi<void>(`/structures/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// =====================
+// Admin API Endpoints
+// =====================
+
+// API Modules
+export const modulesApi = {
+  getAll: () => fetchApi<Module[]>('/admin/modules'),
+  getById: (id: number) => fetchApi<Module>(`/admin/modules/${id}`),
+  create: (data: ModuleInput) => fetchApi<Module>('/admin/modules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: number, data: Partial<ModuleInput>) => fetchApi<Module>(`/admin/modules/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: number) => fetchApi<void>(`/admin/modules/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// API SousModules
+export const sousModulesApi = {
+  getAll: () => fetchApi<SousModule[]>('/admin/sous-modules'),
+  getById: (id: number) => fetchApi<SousModule>(`/admin/sous-modules/${id}`),
+  create: (data: SousModuleInput) => fetchApi<SousModule>('/admin/sous-modules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: number, data: Partial<SousModuleInput>) => fetchApi<SousModule>(`/admin/sous-modules/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: number) => fetchApi<void>(`/admin/sous-modules/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// API Evnmt
+export const evnmtApi = {
+  getAll: () => fetchApi<Evnmt[]>('/admin/evnmts'),
+  getById: (id: number) => fetchApi<Evnmt>(`/admin/evnmts/${id}`),
+  create: (data: EvnmtInput) => fetchApi<Evnmt>('/admin/evnmts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: number, data: Partial<EvnmtInput>) => fetchApi<Evnmt>(`/admin/evnmts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: number) => fetchApi<void>(`/admin/evnmts/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// API Users (Admin)
+export const usersApi = {
+  getAll: () => fetchApi<Users[]>('/admin/users'),
+  getById: (id: number) => fetchApi<Users>(`/admin/users/${id}`),
+  create: (data: UsersInput) => fetchApi<Users>('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: number, data: Partial<UsersInput>) => fetchApi<Users>(`/admin/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: number) => fetchApi<void>(`/admin/users/${id}`, {
     method: 'DELETE',
   }),
 };
@@ -196,190 +619,3 @@ export const authApi = {
   },
   getCurrentUser: () => fetchApi<User>('/auth/me'),
 };
-
-// Types pour l'API
-export interface Room {
-  id: string;
-  number: string;
-  floor: number;
-  type: 'standard' | 'superior' | 'deluxe' | 'suite' | 'presidential';
-  status: 'available' | 'occupied' | 'cleaning' | 'maintenance' | 'reserved';
-  capacity: number;
-  pricePerNight: number;
-  amenities: string[];
-  description?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Guest {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  nationality?: string;
-  idType?: string;
-  idNumber?: string;
-  vip: boolean;
-  totalStays: number;
-  loyaltyPoints: number;
-  notes?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Reservation {
-  id: string;
-  reservationNumber: string;
-  guestId: string;
-  roomId: string;
-  checkIn: string;
-  checkOut: string;
-  status: 'confirmed' | 'pending' | 'checked_in' | 'checked_out' | 'cancelled';
-  adults: number;
-  children: number;
-  totalAmount: number;
-  paidAmount: number;
-  source: 'direct' | 'website' | 'booking' | 'expedia' | 'phone';
-  specialRequests?: string;
-  guest?: Guest;
-  room?: Room;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  guestId: string;
-  reservationId?: string;
-  type: 'reservation' | 'restaurant' | 'service' | 'other';
-  status: 'draft' | 'pending' | 'paid' | 'cancelled';
-  subtotal: number;
-  taxRate: number;
-  taxAmount: number;
-  totalAmount: number;
-  paidAmount: number;
-  dueDate?: string;
-  notes?: string;
-  guest?: Guest;
-  items?: InvoiceItem[];
-  payments?: Payment[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface InvoiceItem {
-  id: string;
-  invoiceId: string;
-  description: string;
-  itemType: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-}
-
-export interface Payment {
-  id: string;
-  invoiceId: string;
-  amount: number;
-  paymentMethod: string;
-  reference?: string;
-  createdAt?: string;
-}
-
-export interface PaymentInput {
-  amount: number;
-  paymentMethod: string;
-  reference?: string;
-}
-
-export interface RestaurantTable {
-  id: string;
-  number: string;
-  capacity: number;
-  location?: string;
-  status: 'available' | 'occupied' | 'reserved' | 'cleaning';
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface MenuItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  description?: string;
-  imageUrl?: string;
-  available: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface RestaurantOrder {
-  id: string;
-  orderNumber: string;
-  orderType: 'dine_in' | 'room_service' | 'takeaway';
-  status: 'pending' | 'preparing' | 'ready' | 'served' | 'paid' | 'cancelled';
-  tableId?: string;
-  roomId?: string;
-  guestId?: string;
-  subtotal: number;
-  taxAmount: number;
-  totalAmount: number;
-  notes?: string;
-  items?: OrderItem[];
-  table?: RestaurantTable;
-  room?: Room;
-  guest?: Guest;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface OrderItem {
-  id: string;
-  orderId: string;
-  menuItemId: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  notes?: string;
-  status: string;
-  menuItem?: MenuItem;
-}
-
-export interface CreateOrderInput {
-  orderType: string;
-  tableId?: string;
-  roomId?: string;
-  guestId?: string;
-  notes?: string;
-  items: {
-    menuItemId: string;
-    quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-    notes?: string;
-  }[];
-}
-
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
-export interface SignupInput {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-}
