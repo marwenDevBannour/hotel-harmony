@@ -11,6 +11,7 @@ import Guests from "./pages/Guests";
 import Billing from "./pages/Billing";
 import Restaurant from "./pages/Restaurant";
 import Auth from "./pages/Auth";
+import Settings from "./pages/Settings";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -53,7 +54,7 @@ const App = () => (
           <Route path="/restaurant" element={<ProtectedRoute><Restaurant /></ProtectedRoute>} />
           <Route path="/staff" element={<ProtectedRoute><ComingSoon title="Personnel" description="Gestion du personnel et des horaires" /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ComingSoon title="Rapports" description="Statistiques et analyses" /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><ComingSoon title="Paramètres" description="Configuration du système" /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
