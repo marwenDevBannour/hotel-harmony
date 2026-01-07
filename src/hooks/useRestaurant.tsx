@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { 
+  restaurantTablesApi, 
+  menuItemsApi, 
+  ordersApi,
+  RestaurantTable as ApiTable,
+  MenuItem as ApiMenuItem,
+  RestaurantOrder as ApiOrder,
+  CreateOrderInput
+} from '@/services/api';
 
 export type TableStatus = 'available' | 'occupied' | 'reserved' | 'cleaning';
 export type TableLocation = 'intérieur' | 'terrasse' | 'privé';
@@ -63,18 +71,74 @@ export interface RestaurantOrder {
   items?: OrderItem[];
 }
 
+// Transform API tables to frontend format
+const transformTable = (table: ApiTable): RestaurantTable => ({
+  id: table.id,
+  number: table.number,
+  capacity: table.capacity,
+  location: (table.location || 'intérieur') as TableLocation,
+  status: table.status as TableStatus,
+  created_at: table.createdAt || new Date().toISOString(),
+  updated_at: table.updatedAt || new Date().toISOString(),
+});
+
+// Transform API menu item to frontend format
+const transformMenuItem = (item: ApiMenuItem): MenuItem => ({
+  id: item.id,
+  name: item.name,
+  description: item.description || null,
+  category: item.category as MenuCategory,
+  price: item.price,
+  available: item.available,
+  image_url: item.imageUrl || null,
+  created_at: item.createdAt || new Date().toISOString(),
+  updated_at: item.updatedAt || new Date().toISOString(),
+});
+
+// Transform API order to frontend format
+const transformOrder = (order: ApiOrder): RestaurantOrder => ({
+  id: order.id,
+  order_number: order.orderNumber,
+  table_id: order.tableId || null,
+  room_id: order.roomId || null,
+  guest_id: order.guestId || null,
+  order_type: order.orderType as OrderType,
+  status: order.status as OrderStatus,
+  subtotal: order.subtotal,
+  tax_amount: order.taxAmount,
+  total_amount: order.totalAmount,
+  notes: order.notes || null,
+  waiter_id: null,
+  created_at: order.createdAt || new Date().toISOString(),
+  updated_at: order.updatedAt || new Date().toISOString(),
+  table: order.table ? transformTable(order.table) : undefined,
+  room: order.room ? { id: order.room.id, number: order.room.number } : undefined,
+  guest: order.guest ? { 
+    id: order.guest.id, 
+    first_name: order.guest.firstName, 
+    last_name: order.guest.lastName 
+  } : undefined,
+  items: order.items?.map(item => ({
+    id: item.id,
+    order_id: item.orderId,
+    menu_item_id: item.menuItemId,
+    quantity: item.quantity,
+    unit_price: item.unitPrice,
+    total_price: item.totalPrice,
+    notes: item.notes || null,
+    status: item.status,
+    created_at: new Date().toISOString(),
+    menu_item: item.menuItem ? transformMenuItem(item.menuItem) : undefined,
+  })),
+});
+
 // Tables hooks
 export const useRestaurantTables = () => {
   return useQuery({
     queryKey: ['restaurant-tables'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('restaurant_tables')
-        .select('*')
-        .order('number');
-      
-      if (error) throw error;
-      return data as RestaurantTable[];
+      const data = await restaurantTablesApi.getAll();
+      return data.map(transformTable);
     },
   });
 };
@@ -84,16 +148,55 @@ export const useUpdateTableStatus = () => {
   
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: TableStatus }) => {
-      const { data, error } = await supabase
-        .from('restaurant_tables')
-        .update({ status })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return restaurantTablesApi.updateStatus(id, status);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['restaurant-tables'] });
+    },
+  });
+};
+
+export const useCreateTable = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (table: Omit<RestaurantTable, 'id' | 'created_at' | 'updated_at'>) => {
+      return restaurantTablesApi.create({
+        number: table.number,
+        capacity: table.capacity,
+        location: table.location,
+        status: table.status,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['restaurant-tables'] });
+    },
+  });
+};
+
+export const useUpdateTable = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...table }: Partial<RestaurantTable> & { id: string }) => {
+      return restaurantTablesApi.update(id, {
+        number: table.number,
+        capacity: table.capacity,
+        location: table.location,
+        status: table.status,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['restaurant-tables'] });
+    },
+  });
+};
+
+export const useDeleteTable = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: string) => restaurantTablesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurant-tables'] });
     },
@@ -105,14 +208,8 @@ export const useMenuItems = () => {
   return useQuery({
     queryKey: ['menu-items'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('menu_items')
-        .select('*')
-        .order('category')
-        .order('name');
-      
-      if (error) throw error;
-      return data as MenuItem[];
+      const data = await menuItemsApi.getAll();
+      return data.map(transformMenuItem);
     },
   });
 };
@@ -121,16 +218,47 @@ export const useCreateMenuItem = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (item: Partial<MenuItem>) => {
-      const { data, error } = await supabase
-        .from('menu_items')
-        .insert(item as any)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+    mutationFn: async (item: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>) => {
+      return menuItemsApi.create({
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        description: item.description || undefined,
+        imageUrl: item.image_url || undefined,
+        available: item.available,
+      });
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu-items'] });
+    },
+  });
+};
+
+export const useUpdateMenuItem = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...item }: Partial<MenuItem> & { id: string }) => {
+      return menuItemsApi.update(id, {
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        description: item.description || undefined,
+        imageUrl: item.image_url || undefined,
+        available: item.available,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menu-items'] });
+    },
+  });
+};
+
+export const useDeleteMenuItem = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: string) => menuItemsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['menu-items'] });
     },
@@ -142,18 +270,8 @@ export const useRestaurantOrders = () => {
   return useQuery({
     queryKey: ['restaurant-orders'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('restaurant_orders')
-        .select(`
-          *,
-          table:restaurant_tables(id, number, location),
-          room:rooms(id, number),
-          guest:guests(id, first_name, last_name)
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as RestaurantOrder[];
+      const data = await ordersApi.getAll();
+      return data.map(transformOrder);
     },
   });
 };
@@ -162,20 +280,8 @@ export const useActiveOrders = () => {
   return useQuery({
     queryKey: ['active-orders'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('restaurant_orders')
-        .select(`
-          *,
-          table:restaurant_tables(id, number, location),
-          room:rooms(id, number),
-          guest:guests(id, first_name, last_name),
-          items:order_items(*, menu_item:menu_items(*))
-        `)
-        .in('status', ['pending', 'preparing', 'ready', 'served'])
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as RestaurantOrder[];
+      const data = await ordersApi.getActive();
+      return data.map(transformOrder);
     },
   });
 };
@@ -188,34 +294,21 @@ export const useCreateOrder = () => {
       order: Partial<RestaurantOrder>; 
       items: Array<{ menu_item_id: string; quantity: number; unit_price: number; notes?: string }> 
     }) => {
-      // Create order
-      const { data: orderData, error: orderError } = await supabase
-        .from('restaurant_orders')
-        .insert(order as any)
-        .select()
-        .single();
-      
-      if (orderError) throw orderError;
-      
-      // Add items
-      if (items.length > 0) {
-        const orderItems = items.map(item => ({
-          order_id: orderData.id,
-          menu_item_id: item.menu_item_id,
+      const apiOrder: CreateOrderInput = {
+        orderType: order.order_type || 'dine_in',
+        tableId: order.table_id || undefined,
+        roomId: order.room_id || undefined,
+        guestId: order.guest_id || undefined,
+        notes: order.notes || undefined,
+        items: items.map(item => ({
+          menuItemId: item.menu_item_id,
           quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: item.quantity * item.unit_price,
-          notes: item.notes || null,
-        }));
-        
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItems);
-        
-        if (itemsError) throw itemsError;
-      }
-      
-      return orderData;
+          unitPrice: item.unit_price,
+          totalPrice: item.quantity * item.unit_price,
+          notes: item.notes,
+        })),
+      };
+      return ordersApi.create(apiOrder);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurant-orders'] });
@@ -230,15 +323,7 @@ export const useUpdateOrderStatus = () => {
   
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
-      const { data, error } = await supabase
-        .from('restaurant_orders')
-        .update({ status })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return ordersApi.updateStatus(id, status);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurant-orders'] });
@@ -251,31 +336,23 @@ export const useRestaurantStats = () => {
   return useQuery({
     queryKey: ['restaurant-stats'],
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const [tablesRes, ordersRes] = await Promise.all([
-        supabase.from('restaurant_tables').select('status'),
-        supabase
-          .from('restaurant_orders')
-          .select('status, total_amount')
-          .gte('created_at', today)
+      const [tables, orders] = await Promise.all([
+        restaurantTablesApi.getAll(),
+        ordersApi.getAll(),
       ]);
       
-      if (tablesRes.error) throw tablesRes.error;
-      if (ordersRes.error) throw ordersRes.error;
-      
-      const tables = tablesRes.data;
-      const orders = ordersRes.data;
+      const today = new Date().toISOString().split('T')[0];
+      const todayOrders = orders.filter(o => o.createdAt?.startsWith(today));
       
       return {
         totalTables: tables.length,
         availableTables: tables.filter(t => t.status === 'available').length,
         occupiedTables: tables.filter(t => t.status === 'occupied').length,
-        todayOrders: orders.length,
-        todayRevenue: orders
+        todayOrders: todayOrders.length,
+        todayRevenue: todayOrders
           .filter(o => o.status === 'paid')
-          .reduce((acc, o) => acc + Number(o.total_amount), 0),
-        activeOrders: orders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).length,
+          .reduce((acc, o) => acc + Number(o.totalAmount), 0),
+        activeOrders: todayOrders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).length,
       };
     },
   });
