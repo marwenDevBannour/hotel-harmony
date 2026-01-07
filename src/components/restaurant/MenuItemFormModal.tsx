@@ -1,11 +1,14 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { menuItemsApi } from '@/services/api';
+import { 
+  useCreateMenuItem, 
+  useUpdateMenuItem, 
+  MenuItem, 
+  MenuCategory 
+} from '@/hooks/useRestaurant';
 import { toast } from 'sonner';
-import { MenuItem, MenuCategory } from '@/hooks/useRestaurant';
-
 import {
   Dialog,
   DialogContent,
@@ -34,7 +37,7 @@ import {
 
 const menuItemSchema = z.object({
   name: z.string().min(1, 'Nom requis'),
-  category: z.enum(['entrée', 'plat', 'dessert', 'boisson', 'apéritif']),
+  category: z.enum(['entrée', 'plat', 'dessert', 'boisson', 'apéritif'] as const),
   price: z.coerce.number().min(0, 'Prix invalide'),
   description: z.string().optional(),
   available: z.boolean(),
@@ -49,56 +52,59 @@ interface MenuItemFormModalProps {
 }
 
 const MenuItemFormModal = ({ open, onOpenChange, menuItem }: MenuItemFormModalProps) => {
-  const queryClient = useQueryClient();
+  const createMenuItem = useCreateMenuItem();
+  const updateMenuItem = useUpdateMenuItem();
   const isEditing = !!menuItem;
 
   const form = useForm<MenuItemFormData>({
     resolver: zodResolver(menuItemSchema),
     defaultValues: {
-      name: menuItem?.name || '',
-      category: menuItem?.category || 'plat',
-      price: menuItem?.price || 0,
-      description: menuItem?.description || '',
-      available: menuItem?.available ?? true,
+      name: '',
+      category: 'plat',
+      price: 0,
+      description: '',
+      available: true,
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: async (data: MenuItemFormData) => {
+  useEffect(() => {
+    if (menuItem) {
+      form.reset({
+        name: menuItem.name,
+        category: menuItem.category,
+        price: menuItem.price,
+        description: menuItem.description || '',
+        available: menuItem.available,
+      });
+    } else {
+      form.reset({
+        name: '',
+        category: 'plat',
+        price: 0,
+        description: '',
+        available: true,
+      });
+    }
+  }, [menuItem, form]);
+
+  const onSubmit = async (data: MenuItemFormData) => {
+    try {
       if (isEditing) {
-        return menuItemsApi.update(menuItem.id, {
-          name: data.name,
-          category: data.category,
-          price: data.price,
-          description: data.description || undefined,
-          available: data.available,
-        });
+        await updateMenuItem.mutateAsync({ id: menuItem.id, ...data });
+        toast.success('Article modifié');
       } else {
-        return menuItemsApi.create({
-          name: data.name,
-          category: data.category,
-          price: data.price,
-          description: data.description || undefined,
-          available: data.available,
-        });
+        await createMenuItem.mutateAsync(data as Omit<MenuItem, 'id'>);
+        toast.success('Article créé');
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['menu-items'] });
-      toast.success(isEditing ? 'Article modifié' : 'Article créé');
       onOpenChange(false);
-      form.reset();
-    },
-    onError: () => {
+    } catch {
       toast.error('Erreur lors de l\'enregistrement');
-    },
-  });
-
-  const onSubmit = (data: MenuItemFormData) => {
-    mutation.mutate(data);
+    }
   };
 
-  const categoryOptions = [
+  const isPending = createMenuItem.isPending || updateMenuItem.isPending;
+
+  const categoryOptions: { value: MenuCategory; label: string }[] = [
     { value: 'entrée', label: 'Entrée' },
     { value: 'plat', label: 'Plat' },
     { value: 'dessert', label: 'Dessert' },
@@ -208,8 +214,8 @@ const MenuItemFormModal = ({ open, onOpenChange, menuItem }: MenuItemFormModalPr
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Annuler
               </Button>
-              <Button type="submit" variant="gold" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Enregistrement...' : isEditing ? 'Modifier' : 'Créer'}
+              <Button type="submit" variant="gold" disabled={isPending}>
+                {isPending ? 'Enregistrement...' : isEditing ? 'Modifier' : 'Créer'}
               </Button>
             </div>
           </form>

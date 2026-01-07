@@ -1,11 +1,15 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { restaurantTablesApi } from '@/services/api';
+import { 
+  useCreateTable, 
+  useUpdateTable, 
+  RestaurantTable, 
+  TableStatus, 
+  TableLocation 
+} from '@/hooks/useRestaurant';
 import { toast } from 'sonner';
-import { RestaurantTable, TableStatus, TableLocation } from '@/hooks/useRestaurant';
-
 import {
   Dialog,
   DialogContent,
@@ -33,8 +37,8 @@ import {
 const tableSchema = z.object({
   number: z.string().min(1, 'Numéro requis'),
   capacity: z.coerce.number().min(1, 'Capacité minimale: 1'),
-  location: z.enum(['intérieur', 'terrasse', 'privé']),
-  status: z.enum(['available', 'occupied', 'reserved', 'cleaning']),
+  location: z.enum(['intérieur', 'terrasse', 'privé'] as const),
+  status: z.enum(['available', 'occupied', 'reserved', 'cleaning'] as const),
 });
 
 type TableFormData = z.infer<typeof tableSchema>;
@@ -46,61 +50,63 @@ interface TableFormModalProps {
 }
 
 const TableFormModal = ({ open, onOpenChange, table }: TableFormModalProps) => {
-  const queryClient = useQueryClient();
+  const createTable = useCreateTable();
+  const updateTable = useUpdateTable();
   const isEditing = !!table;
 
   const form = useForm<TableFormData>({
     resolver: zodResolver(tableSchema),
     defaultValues: {
-      number: table?.number || '',
-      capacity: table?.capacity || 4,
-      location: table?.location || 'intérieur',
-      status: table?.status || 'available',
+      number: '',
+      capacity: 4,
+      location: 'intérieur',
+      status: 'available',
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: async (data: TableFormData) => {
+  useEffect(() => {
+    if (table) {
+      form.reset({
+        number: table.number,
+        capacity: table.capacity,
+        location: table.location,
+        status: table.status,
+      });
+    } else {
+      form.reset({
+        number: '',
+        capacity: 4,
+        location: 'intérieur',
+        status: 'available',
+      });
+    }
+  }, [table, form]);
+
+  const onSubmit = async (data: TableFormData) => {
+    try {
       if (isEditing) {
-        return restaurantTablesApi.update(table.id, {
-          number: data.number,
-          capacity: data.capacity,
-          location: data.location,
-          status: data.status,
-        });
+        await updateTable.mutateAsync({ id: table.id, ...data });
+        toast.success('Table modifiée');
       } else {
-        return restaurantTablesApi.create({
-          number: data.number,
-          capacity: data.capacity,
-          location: data.location,
-          status: data.status,
-        });
+        await createTable.mutateAsync(data as Omit<RestaurantTable, 'id'>);
+        toast.success('Table créée');
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['restaurant-tables'] });
-      queryClient.invalidateQueries({ queryKey: ['restaurant-stats'] });
-      toast.success(isEditing ? 'Table modifiée' : 'Table créée');
       onOpenChange(false);
-      form.reset();
-    },
-    onError: () => {
+    } catch {
       toast.error('Erreur lors de l\'enregistrement');
-    },
-  });
-
-  const onSubmit = (data: TableFormData) => {
-    mutation.mutate(data);
+    }
   };
 
-  const statusOptions = [
+  const isPending = createTable.isPending || updateTable.isPending;
+
+  const statusOptions: { value: TableStatus; label: string }[] = [
     { value: 'available', label: 'Disponible' },
     { value: 'occupied', label: 'Occupée' },
     { value: 'reserved', label: 'Réservée' },
     { value: 'cleaning', label: 'Nettoyage' },
   ];
 
-  const locationOptions = [
+  const locationOptions: { value: TableLocation; label: string }[] = [
     { value: 'intérieur', label: 'Intérieur' },
     { value: 'terrasse', label: 'Terrasse' },
     { value: 'privé', label: 'Salon Privé' },
@@ -199,8 +205,8 @@ const TableFormModal = ({ open, onOpenChange, table }: TableFormModalProps) => {
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Annuler
               </Button>
-              <Button type="submit" variant="gold" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Enregistrement...' : isEditing ? 'Modifier' : 'Créer'}
+              <Button type="submit" variant="gold" disabled={isPending}>
+                {isPending ? 'Enregistrement...' : isEditing ? 'Modifier' : 'Créer'}
               </Button>
             </div>
           </form>
