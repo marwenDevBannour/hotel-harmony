@@ -302,13 +302,16 @@ export interface UsersInput {
   badmin: boolean;
 }
 
-// Auth types
+// Auth types - correspond à UserDto du backend
 export interface User {
   id: number;
-  email: string;
-  firstName: string;
+  codeUser: string;
   lastName: string;
-  role: string;
+  firstName: string;
+  matricule: string;
+  dateNaiss: string;
+  email: string;
+  badmin: boolean;
 }
 
 export interface AuthResponse {
