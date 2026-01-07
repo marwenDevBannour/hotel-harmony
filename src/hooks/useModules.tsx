@@ -27,7 +27,11 @@ export function useModules() {
   // Grouper les sous-modules par module
   const modulesWithSousModules: ModuleWithSousModules[] = modules.map(module => ({
     ...module,
-    sousModules: sousModules.filter(sm => sm.module?.id === module.id),
+    sousModules: sousModules.filter(sm => {
+      // Vérifier à la fois l'objet module imbriqué et moduleId direct
+      const smModuleId = sm.module?.id ?? (sm as any).moduleId;
+      return smModuleId === module.id;
+    }),
   }));
 
   return {
