@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { restaurantTablesApi } from '@/services/api';
 import { toast } from 'sonner';
 import { RestaurantTable, TableStatus, TableLocation } from '@/hooks/useRestaurant';
 
@@ -62,22 +62,19 @@ const TableFormModal = ({ open, onOpenChange, table }: TableFormModalProps) => {
   const mutation = useMutation({
     mutationFn: async (data: TableFormData) => {
       if (isEditing) {
-        const { error } = await supabase
-          .from('restaurant_tables')
-          .update(data)
-          .eq('id', table.id);
-        if (error) throw error;
-      } else {
-        const insertData = {
+        return restaurantTablesApi.update(table.id, {
           number: data.number,
           capacity: data.capacity,
           location: data.location,
           status: data.status,
-        };
-        const { error } = await supabase
-          .from('restaurant_tables')
-          .insert([insertData]);
-        if (error) throw error;
+        });
+      } else {
+        return restaurantTablesApi.create({
+          number: data.number,
+          capacity: data.capacity,
+          location: data.location,
+          status: data.status,
+        });
       }
     },
     onSuccess: () => {

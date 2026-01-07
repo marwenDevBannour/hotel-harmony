@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { reservationsApi } from '@/services/api';
 import { Reservation, ReservationStatus, ReservationSource } from '@/hooks/useReservations';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests } from '@/hooks/useGuests';
@@ -128,30 +128,25 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
 
   const createMutation = useMutation({
     mutationFn: async (values: ReservationFormValues) => {
-      const insertData = {
-        guest_id: values.guest_id,
-        room_id: values.room_id,
-        check_in: values.check_in,
-        check_out: values.check_out,
+      return reservationsApi.create({
+        reservationNumber: '',
+        guestId: values.guest_id,
+        roomId: values.room_id,
+        checkIn: values.check_in,
+        checkOut: values.check_out,
         adults: values.adults,
         children: values.children,
         status: values.status,
         source: values.source,
-        total_amount: values.total_amount,
-        paid_amount: values.paid_amount,
-        special_requests: values.special_requests || null,
-        reservation_number: '',
-      };
-      const { data, error } = await supabase
-        .from('reservations')
-        .insert([insertData])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+        totalAmount: values.total_amount,
+        paidAmount: values.paid_amount,
+        specialRequests: values.special_requests || undefined,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['today-arrivals'] });
+      queryClient.invalidateQueries({ queryKey: ['today-departures'] });
       toast.success('Réservation créée avec succès');
       onOpenChange(false);
     },
@@ -162,17 +157,24 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
 
   const updateMutation = useMutation({
     mutationFn: async (values: ReservationFormValues) => {
-      const { data, error } = await supabase
-        .from('reservations')
-        .update(values)
-        .eq('id', reservation!.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      return reservationsApi.update(reservation!.id, {
+        guestId: values.guest_id,
+        roomId: values.room_id,
+        checkIn: values.check_in,
+        checkOut: values.check_out,
+        adults: values.adults,
+        children: values.children,
+        status: values.status,
+        source: values.source,
+        totalAmount: values.total_amount,
+        paidAmount: values.paid_amount,
+        specialRequests: values.special_requests || undefined,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['today-arrivals'] });
+      queryClient.invalidateQueries({ queryKey: ['today-departures'] });
       toast.success('Réservation modifiée avec succès');
       onOpenChange(false);
     },

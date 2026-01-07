@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { menuItemsApi } from '@/services/api';
 import { toast } from 'sonner';
 import { MenuItem, MenuCategory } from '@/hooks/useRestaurant';
 
@@ -66,23 +66,21 @@ const MenuItemFormModal = ({ open, onOpenChange, menuItem }: MenuItemFormModalPr
   const mutation = useMutation({
     mutationFn: async (data: MenuItemFormData) => {
       if (isEditing) {
-        const { error } = await supabase
-          .from('menu_items')
-          .update(data)
-          .eq('id', menuItem.id);
-        if (error) throw error;
-      } else {
-        const insertData = {
+        return menuItemsApi.update(menuItem.id, {
           name: data.name,
           category: data.category,
           price: data.price,
-          description: data.description || null,
+          description: data.description || undefined,
           available: data.available,
-        };
-        const { error } = await supabase
-          .from('menu_items')
-          .insert([insertData]);
-        if (error) throw error;
+        });
+      } else {
+        return menuItemsApi.create({
+          name: data.name,
+          category: data.category,
+          price: data.price,
+          description: data.description || undefined,
+          available: data.available,
+        });
       }
     },
     onSuccess: () => {

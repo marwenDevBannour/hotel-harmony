@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Room, RoomStatus, RoomType } from '@/hooks/useRooms';
+import { roomsApi } from '@/services/api';
+import { RoomData, RoomStatus, RoomType } from '@/hooks/useRooms';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -66,7 +66,7 @@ const amenitiesList = ['WiFi', 'TV', 'Mini-bar', 'Sea View', 'Jacuzzi', 'Balcon'
 interface RoomFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  room?: Room | null;
+  room?: RoomData | null;
 }
 
 export function RoomFormModal({ open, onOpenChange, room }: RoomFormModalProps) {
@@ -115,23 +115,16 @@ export function RoomFormModal({ open, onOpenChange, room }: RoomFormModalProps) 
 
   const createMutation = useMutation({
     mutationFn: async (values: RoomFormValues) => {
-      const insertData = {
+      return roomsApi.create({
         number: values.number,
         floor: values.floor,
         type: values.type,
         status: values.status,
         capacity: values.capacity,
-        price_per_night: values.price_per_night,
-        description: values.description || null,
+        pricePerNight: values.price_per_night,
+        description: values.description || undefined,
         amenities: values.amenities || [],
-      };
-      const { data, error } = await supabase
-        .from('rooms')
-        .insert([insertData])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
@@ -146,14 +139,16 @@ export function RoomFormModal({ open, onOpenChange, room }: RoomFormModalProps) 
 
   const updateMutation = useMutation({
     mutationFn: async (values: RoomFormValues) => {
-      const { data, error } = await supabase
-        .from('rooms')
-        .update(values)
-        .eq('id', room!.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      return roomsApi.update(room!.id, {
+        number: values.number,
+        floor: values.floor,
+        type: values.type,
+        status: values.status,
+        capacity: values.capacity,
+        pricePerNight: values.price_per_night,
+        description: values.description || undefined,
+        amenities: values.amenities || [],
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });

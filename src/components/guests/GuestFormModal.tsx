@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { guestsApi } from '@/services/api';
 import { Guest } from '@/hooks/useGuests';
 import { toast } from 'sonner';
 import {
@@ -112,24 +112,19 @@ export function GuestFormModal({ open, onOpenChange, guest }: GuestFormModalProp
 
   const createMutation = useMutation({
     mutationFn: async (values: GuestFormValues) => {
-      const insertData = {
-        first_name: values.first_name,
-        last_name: values.last_name,
+      return guestsApi.create({
+        firstName: values.first_name,
+        lastName: values.last_name,
         email: values.email,
         phone: values.phone,
-        nationality: values.nationality || null,
-        id_type: values.id_type || null,
-        id_number: values.id_number || null,
+        nationality: values.nationality || undefined,
+        idType: values.id_type || undefined,
+        idNumber: values.id_number || undefined,
         vip: values.vip,
-        notes: values.notes || null,
-      };
-      const { data, error } = await supabase
-        .from('guests')
-        .insert([insertData])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+        totalStays: 0,
+        loyaltyPoints: 0,
+        notes: values.notes || undefined,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
@@ -144,14 +139,17 @@ export function GuestFormModal({ open, onOpenChange, guest }: GuestFormModalProp
 
   const updateMutation = useMutation({
     mutationFn: async (values: GuestFormValues) => {
-      const { data, error } = await supabase
-        .from('guests')
-        .update(values)
-        .eq('id', guest!.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      return guestsApi.update(guest!.id, {
+        firstName: values.first_name,
+        lastName: values.last_name,
+        email: values.email,
+        phone: values.phone,
+        nationality: values.nationality || undefined,
+        idType: values.id_type || undefined,
+        idNumber: values.id_number || undefined,
+        vip: values.vip,
+        notes: values.notes || undefined,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
