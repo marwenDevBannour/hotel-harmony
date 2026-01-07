@@ -2,11 +2,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { invoicesApi } from '@/services/api';
+import { invoicesApi, Invoice, InvoiceInput } from '@/services/api';
 import { toast } from 'sonner';
-import { useGuests } from '@/hooks/useGuests';
 import { useReservations } from '@/hooks/useReservations';
-import { Invoice, InvoiceType, InvoiceStatus } from '@/hooks/useInvoices';
 
 import {
   Dialog,
@@ -24,7 +22,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -34,14 +32,10 @@ import {
 } from '@/components/ui/select';
 
 const invoiceSchema = z.object({
-  guest_id: z.string().min(1, 'Client requis'),
-  reservation_id: z.string().optional(),
-  type: z.enum(['reservation', 'restaurant', 'other']),
-  status: z.enum(['draft', 'pending', 'paid', 'partial', 'cancelled']),
-  subtotal: z.coerce.number().min(0, 'Montant invalide'),
-  tax_rate: z.coerce.number().min(0).max(100),
-  due_date: z.string().optional(),
-  notes: z.string().optional(),
+  reservationId: z.coerce.number().min(1, 'Réservation requise'),
+  issueDate: z.string().min(1, 'Date requise'),
+  amount: z.coerce.number().min(0, 'Montant invalide'),
+  paid: z.boolean(),
 });
 
 type InvoiceFormData = z.infer<typeof invoiceSchema>;
@@ -54,53 +48,25 @@ interface InvoiceFormModalProps {
 
 const InvoiceFormModal = ({ open, onOpenChange, invoice }: InvoiceFormModalProps) => {
   const queryClient = useQueryClient();
-  const { data: guests } = useGuests();
   const { data: reservations } = useReservations();
   const isEditing = !!invoice;
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
-      guest_id: invoice?.guest_id || '',
-      reservation_id: invoice?.reservation_id || '',
-      type: invoice?.type || 'reservation',
-      status: invoice?.status || 'draft',
-      subtotal: invoice?.subtotal || 0,
-      tax_rate: invoice?.tax_rate || 10,
-      due_date: invoice?.due_date || '',
-      notes: invoice?.notes || '',
+      reservationId: invoice?.reservation?.id || 0,
+      issueDate: invoice?.issueDate || new Date().toISOString().split('T')[0],
+      amount: invoice?.amount || 0,
+      paid: invoice?.paid || false,
     },
   });
 
   const mutation = useMutation({
     mutationFn: async (data: InvoiceFormData) => {
-      const taxAmount = (data.subtotal * data.tax_rate) / 100;
-      const totalAmount = data.subtotal + taxAmount;
-      
-      // Map 'partial' to 'pending' for API compatibility
-      const apiStatus = data.status === 'partial' ? 'pending' : data.status;
-
-      const invoiceData = {
-        guestId: data.guest_id,
-        reservationId: data.reservation_id || undefined,
-        type: data.type,
-        status: apiStatus as 'draft' | 'pending' | 'paid' | 'cancelled',
-        subtotal: data.subtotal,
-        taxRate: data.tax_rate,
-        taxAmount: taxAmount,
-        totalAmount: totalAmount,
-        paidAmount: 0,
-        dueDate: data.due_date || undefined,
-        notes: data.notes || undefined,
-      };
-
       if (isEditing) {
-        return invoicesApi.update(invoice.id, invoiceData);
+        return invoicesApi.update(invoice.id, data);
       } else {
-        return invoicesApi.create({
-          ...invoiceData,
-          invoiceNumber: '',
-        });
+        return invoicesApi.create(data);
       }
     },
     onSuccess: () => {
@@ -121,7 +87,7 @@ const InvoiceFormModal = ({ open, onOpenChange, invoice }: InvoiceFormModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Modifier la Facture' : 'Nouvelle Facture'}
@@ -130,145 +96,37 @@ const InvoiceFormModal = ({ open, onOpenChange, invoice }: InvoiceFormModalProps
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="guest_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un client" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {guests?.map((guest) => (
-                          <SelectItem key={guest.id} value={guest.id}>
-                            {guest.first_name} {guest.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="reservation_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Réservation</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Aucune" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">Aucune</SelectItem>
-                        {reservations?.map((res) => (
-                          <SelectItem key={res.id} value={res.id}>
-                            {res.reservation_number}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="reservation">Séjour</SelectItem>
-                        <SelectItem value="restaurant">Restaurant</SelectItem>
-                        <SelectItem value="other">Autre</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Statut</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="draft">Brouillon</SelectItem>
-                        <SelectItem value="pending">En attente</SelectItem>
-                        <SelectItem value="partial">Partiel</SelectItem>
-                        <SelectItem value="paid">Payée</SelectItem>
-                        <SelectItem value="cancelled">Annulée</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="subtotal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sous-total (€) *</FormLabel>
+            <FormField
+              control={form.control}
+              name="reservationId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Réservation *</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || '')}>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une réservation" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="tax_rate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Taux TVA (%)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.1" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    <SelectContent>
+                      {reservations?.map((res) => (
+                        <SelectItem key={res.id} value={String(res.id)}>
+                          {res.guest?.name} - {res.room?.number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
-              name="due_date"
+              name="issueDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Date d'échéance</FormLabel>
+                  <FormLabel>Date d'émission *</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>
@@ -279,14 +137,27 @@ const InvoiceFormModal = ({ open, onOpenChange, invoice }: InvoiceFormModalProps
 
             <FormField
               control={form.control}
-              name="notes"
+              name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>Montant (€) *</FormLabel>
                   <FormControl>
-                    <Textarea rows={2} {...field} />
+                    <Input type="number" step="0.01" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="paid"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormLabel className="cursor-pointer">Payée</FormLabel>
                 </FormItem>
               )}
             />

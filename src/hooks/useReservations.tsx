@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reservationsApi, Reservation as ApiReservation, ReservationInput } from '@/services/api';
 
+// Re-export types
+export type { ReservationInput };
+export type Reservation = ApiReservation;
+
 export const useReservations = () => {
   return useQuery({
     queryKey: ['reservations'],

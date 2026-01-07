@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoicesApi, Invoice as ApiInvoice, InvoiceInput, PaymentInput } from '@/services/api';
 
+// Re-export types
+export type { InvoiceInput, PaymentInput };
+export type Invoice = ApiInvoice;
+
 export const useInvoices = () => {
   return useQuery({
     queryKey: ['invoices'],

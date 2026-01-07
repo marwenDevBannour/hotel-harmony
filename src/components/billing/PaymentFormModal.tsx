@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAddPayment, PaymentMethod } from '@/hooks/useInvoices';
+import { useAddPayment } from '@/hooks/useInvoices';
 import { toast } from 'sonner';
 
 import {
@@ -30,8 +30,7 @@ import {
 
 const paymentSchema = z.object({
   amount: z.coerce.number().min(0.01, 'Montant requis'),
-  payment_method: z.enum(['cash', 'card', 'transfer', 'check']),
-  reference: z.string().optional(),
+  method: z.string().min(1, 'Mode de paiement requis'),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -39,7 +38,7 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 interface PaymentFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  invoiceId: string;
+  invoiceId: number;
   remainingAmount: number;
 }
 
@@ -50,8 +49,7 @@ const PaymentFormModal = ({ open, onOpenChange, invoiceId, remainingAmount }: Pa
     resolver: zodResolver(paymentSchema),
     defaultValues: {
       amount: remainingAmount,
-      payment_method: 'cash',
-      reference: '',
+      method: 'cash',
     },
   });
 
@@ -60,9 +58,9 @@ const PaymentFormModal = ({ open, onOpenChange, invoiceId, remainingAmount }: Pa
       {
         invoiceId,
         payment: {
+          paymentDate: new Date().toISOString(),
+          method: data.method,
           amount: data.amount,
-          payment_method: data.payment_method as PaymentMethod,
-          reference: data.reference || null,
         },
       },
       {
@@ -117,7 +115,7 @@ const PaymentFormModal = ({ open, onOpenChange, invoiceId, remainingAmount }: Pa
 
             <FormField
               control={form.control}
-              name="payment_method"
+              name="method"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mode de paiement</FormLabel>
@@ -135,20 +133,6 @@ const PaymentFormModal = ({ open, onOpenChange, invoiceId, remainingAmount }: Pa
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="reference"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Référence</FormLabel>
-                  <FormControl>
-                    <Input placeholder="N° de chèque, transaction..." {...field} />
-                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

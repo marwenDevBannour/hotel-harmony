@@ -3,8 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { reservationsApi } from '@/services/api';
-import { Reservation, ReservationStatus, ReservationSource } from '@/hooks/useReservations';
+import { reservationsApi, Reservation, ReservationInput } from '@/services/api';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests } from '@/hooks/useGuests';
 import { toast } from 'sonner';
@@ -24,7 +23,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -34,36 +32,13 @@ import {
 } from '@/components/ui/select';
 
 const reservationSchema = z.object({
-  guest_id: z.string().min(1, 'Client requis'),
-  room_id: z.string().min(1, 'Chambre requise'),
-  check_in: z.string().min(1, "Date d'arrivée requise"),
-  check_out: z.string().min(1, 'Date de départ requise'),
-  adults: z.coerce.number().min(1, 'Au moins 1 adulte'),
-  children: z.coerce.number().min(0),
-  status: z.enum(['confirmed', 'pending', 'checked_in', 'checked_out', 'cancelled']),
-  source: z.enum(['direct', 'website', 'booking', 'expedia', 'phone']),
-  total_amount: z.coerce.number().min(0),
-  paid_amount: z.coerce.number().min(0),
-  special_requests: z.string().optional(),
+  guestId: z.coerce.number().min(1, 'Client requis'),
+  roomId: z.coerce.number().min(1, 'Chambre requise'),
+  checkInDate: z.string().min(1, "Date d'arrivée requise"),
+  checkOutDate: z.string().min(1, 'Date de départ requise'),
 });
 
 type ReservationFormValues = z.infer<typeof reservationSchema>;
-
-const statusLabels: Record<ReservationStatus, string> = {
-  confirmed: 'Confirmée',
-  pending: 'En attente',
-  checked_in: 'Enregistré',
-  checked_out: 'Parti',
-  cancelled: 'Annulée',
-};
-
-const sourceLabels: Record<ReservationSource, string> = {
-  direct: 'Direct',
-  website: 'Site Web',
-  booking: 'Booking.com',
-  expedia: 'Expedia',
-  phone: 'Téléphone',
-};
 
 interface ReservationFormModalProps {
   open: boolean;
@@ -80,73 +55,35 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
   const form = useForm<ReservationFormValues>({
     resolver: zodResolver(reservationSchema),
     defaultValues: {
-      guest_id: '',
-      room_id: '',
-      check_in: '',
-      check_out: '',
-      adults: 1,
-      children: 0,
-      status: 'pending',
-      source: 'direct',
-      total_amount: 0,
-      paid_amount: 0,
-      special_requests: '',
+      guestId: 0,
+      roomId: 0,
+      checkInDate: '',
+      checkOutDate: '',
     },
   });
 
   useEffect(() => {
     if (reservation) {
       form.reset({
-        guest_id: reservation.guest_id,
-        room_id: reservation.room_id,
-        check_in: reservation.check_in,
-        check_out: reservation.check_out,
-        adults: reservation.adults,
-        children: reservation.children,
-        status: reservation.status,
-        source: reservation.source,
-        total_amount: Number(reservation.total_amount),
-        paid_amount: Number(reservation.paid_amount),
-        special_requests: reservation.special_requests || '',
+        guestId: reservation.guest?.id || 0,
+        roomId: reservation.room?.id || 0,
+        checkInDate: reservation.checkInDate,
+        checkOutDate: reservation.checkOutDate,
       });
     } else {
       form.reset({
-        guest_id: '',
-        room_id: '',
-        check_in: '',
-        check_out: '',
-        adults: 1,
-        children: 0,
-        status: 'pending',
-        source: 'direct',
-        total_amount: 0,
-        paid_amount: 0,
-        special_requests: '',
+        guestId: 0,
+        roomId: 0,
+        checkInDate: '',
+        checkOutDate: '',
       });
     }
   }, [reservation, form]);
 
   const createMutation = useMutation({
-    mutationFn: async (values: ReservationFormValues) => {
-      return reservationsApi.create({
-        reservationNumber: '',
-        guestId: values.guest_id,
-        roomId: values.room_id,
-        checkIn: values.check_in,
-        checkOut: values.check_out,
-        adults: values.adults,
-        children: values.children,
-        status: values.status,
-        source: values.source,
-        totalAmount: values.total_amount,
-        paidAmount: values.paid_amount,
-        specialRequests: values.special_requests || undefined,
-      });
-    },
+    mutationFn: (values: ReservationFormValues) => reservationsApi.create(values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['today-arrivals'] });
-      queryClient.invalidateQueries({ queryKey: ['today-departures'] });
       toast.success('Réservation créée avec succès');
       onOpenChange(false);
     },
@@ -156,25 +93,10 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (values: ReservationFormValues) => {
-      return reservationsApi.update(reservation!.id, {
-        guestId: values.guest_id,
-        roomId: values.room_id,
-        checkIn: values.check_in,
-        checkOut: values.check_out,
-        adults: values.adults,
-        children: values.children,
-        status: values.status,
-        source: values.source,
-        totalAmount: values.total_amount,
-        paidAmount: values.paid_amount,
-        specialRequests: values.special_requests || undefined,
-      });
-    },
+    mutationFn: (values: ReservationFormValues) => 
+      reservationsApi.update(reservation!.id, values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['today-arrivals'] });
-      queryClient.invalidateQueries({ queryKey: ['today-departures'] });
       toast.success('Réservation modifiée avec succès');
       onOpenChange(false);
     },
@@ -193,11 +115,9 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const availableRooms = rooms?.filter(r => r.status === 'available' || r.id === reservation?.room_id);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Modifier la Réservation' : 'Nouvelle Réservation'}
@@ -208,11 +128,11 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="guest_id"
+              name="guestId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Client</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || '')}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un client..." />
@@ -220,8 +140,8 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
                     </FormControl>
                     <SelectContent>
                       {guests?.map((guest) => (
-                        <SelectItem key={guest.id} value={guest.id}>
-                          {guest.first_name} {guest.last_name}
+                        <SelectItem key={guest.id} value={String(guest.id)}>
+                          {guest.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -233,20 +153,20 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
 
             <FormField
               control={form.control}
-              name="room_id"
+              name="roomId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Chambre</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || '')}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une chambre..." />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availableRooms?.map((room) => (
-                        <SelectItem key={room.id} value={room.id}>
-                          {room.number} - {room.type} ({room.price_per_night}€/nuit)
+                      {rooms?.map((room) => (
+                        <SelectItem key={room.id} value={String(room.id)}>
+                          {room.number} - {room.type} ({room.price}€/nuit)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -259,7 +179,7 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="check_in"
+                name="checkInDate"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Date d'arrivée</FormLabel>
@@ -272,7 +192,7 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
               />
               <FormField
                 control={form.control}
-                name="check_out"
+                name="checkOutDate"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Date de départ</FormLabel>
@@ -284,129 +204,6 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
                 )}
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="adults"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Adultes</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="children"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Enfants</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Statut</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(statusLabels).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="source"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Source</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(sourceLabels).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="total_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Montant total (€)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} step={0.01} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="paid_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Montant payé (€)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} step={0.01} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="special_requests"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Demandes spéciales</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Préférences, demandes spéciales..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

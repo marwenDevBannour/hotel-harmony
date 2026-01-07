@@ -1,62 +1,19 @@
 import MainLayout from '@/components/layout/MainLayout';
-import { useInvoices, useInvoiceStats, Invoice, InvoiceStatus } from '@/hooks/useInvoices';
+import { useInvoices, useInvoiceStats, Invoice } from '@/hooks/useInvoices';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { exportToCSV, exportToExcel, invoicesExportColumns } from '@/lib/exportUtils';
-import { useSearchFilter, FilterConfig } from '@/hooks/useSearchFilter';
-import { SearchFilterBar } from '@/components/filters/SearchFilterBar';
 import { 
   Plus, 
   FileText,
-  CreditCard,
   Download,
   CheckCircle,
   Clock,
-  AlertCircle,
   Edit,
 } from 'lucide-react';
 import { useState } from 'react';
 import InvoiceFormModal from '@/components/billing/InvoiceFormModal';
 import PaymentFormModal from '@/components/billing/PaymentFormModal';
-
-const statusConfig: Record<InvoiceStatus, { 
-  label: string; 
-  className: string;
-  icon: React.ElementType;
-}> = {
-  draft: { 
-    label: 'Brouillon', 
-    className: 'bg-gray-100 text-gray-700 border-gray-200',
-    icon: FileText,
-  },
-  pending: { 
-    label: 'En attente', 
-    className: 'bg-amber-100 text-amber-700 border-amber-200',
-    icon: Clock,
-  },
-  paid: { 
-    label: 'Payée', 
-    className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    icon: CheckCircle,
-  },
-  partial: { 
-    label: 'Partiel', 
-    className: 'bg-blue-100 text-blue-700 border-blue-200',
-    icon: AlertCircle,
-  },
-  cancelled: { 
-    label: 'Annulée', 
-    className: 'bg-red-100 text-red-700 border-red-200',
-    icon: AlertCircle,
-  },
-};
-
-const typeLabels = {
-  reservation: 'Séjour',
-  restaurant: 'Restaurant',
-  other: 'Autre',
-};
 
 const InvoiceCard = ({ 
   invoice, 
@@ -67,32 +24,31 @@ const InvoiceCard = ({
   onEdit: (invoice: Invoice) => void;
   onPayment: (invoice: Invoice) => void;
 }) => {
-  const status = statusConfig[invoice.status];
-  const StatusIcon = status.icon;
-  const balance = Number(invoice.total_amount) - Number(invoice.paid_amount);
+  const isPaid = invoice.paid;
 
   return (
     <div className="card-elevated card-hover overflow-hidden">
-      {/* Header */}
       <div className="flex items-start justify-between border-b border-border p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold/10">
             <FileText className="h-6 w-6 text-gold" />
           </div>
           <div>
-            <p className="font-display text-lg font-semibold">{invoice.invoice_number}</p>
+            <p className="font-display text-lg font-semibold">Facture #{invoice.id}</p>
             <p className="text-sm text-muted-foreground">
-              {invoice.guest?.first_name} {invoice.guest?.last_name}
+              {invoice.reservation?.guest?.name || 'N/A'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={cn(
             "flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium",
-            status.className
+            isPaid 
+              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+              : "bg-amber-100 text-amber-700 border-amber-200"
           )}>
-            <StatusIcon className="h-3 w-3" />
-            {status.label}
+            {isPaid ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+            {isPaid ? 'Payée' : 'En attente'}
           </span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(invoice)}>
             <Edit className="h-4 w-4" />
@@ -100,67 +56,28 @@ const InvoiceCard = ({
         </div>
       </div>
 
-      {/* Body */}
       <div className="p-4">
-        {/* Type & Date */}
         <div className="mb-4 flex items-center justify-between text-sm">
-          <span className="rounded-full bg-secondary px-2 py-1 text-xs">
-            {typeLabels[invoice.type]}
-          </span>
           <span className="text-muted-foreground">
-            {new Date(invoice.created_at).toLocaleDateString('fr-FR')}
+            {new Date(invoice.issueDate).toLocaleDateString('fr-FR')}
           </span>
         </div>
 
-        {/* Reservation ref */}
-        {invoice.reservation && (
-          <div className="mb-4 rounded-lg bg-secondary p-3 text-sm">
-            <p className="text-muted-foreground">Réservation</p>
-            <p className="font-medium">{invoice.reservation.reservation_number}</p>
-          </div>
-        )}
-
-        {/* Amounts */}
-        <div className="mb-4 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-lg bg-secondary p-2">
-            <p className="text-xs text-muted-foreground">Sous-total</p>
-            <p className="font-semibold">{Number(invoice.subtotal).toLocaleString('fr-FR')} €</p>
-          </div>
-          <div className="rounded-lg bg-secondary p-2">
-            <p className="text-xs text-muted-foreground">TVA ({invoice.tax_rate}%)</p>
-            <p className="font-semibold">{Number(invoice.tax_amount).toLocaleString('fr-FR')} €</p>
-          </div>
-          <div className="rounded-lg bg-primary/10 p-2">
-            <p className="text-xs text-muted-foreground">Total</p>
-            <p className="font-display font-bold">{Number(invoice.total_amount).toLocaleString('fr-FR')} €</p>
-          </div>
+        <div className="mb-4 rounded-lg bg-primary/10 p-3 text-center">
+          <p className="text-xs text-muted-foreground">Montant</p>
+          <p className="font-display text-xl font-bold">{invoice.amount.toLocaleString('fr-FR')} €</p>
         </div>
 
-        {/* Payment & Actions */}
-        <div className="flex items-center justify-between border-t border-border pt-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Payé</p>
-            <p className="font-semibold text-emerald-600">
-              {Number(invoice.paid_amount).toLocaleString('fr-FR')} €
-            </p>
-            {balance > 0 && (
-              <p className="flex items-center gap-1 text-xs text-amber-600">
-                <CreditCard className="h-3 w-3" />
-                Reste: {balance.toLocaleString('fr-FR')} €
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-              <Button variant="gold" size="sm" onClick={() => onPayment(invoice)}>
-                Encaisser
-              </Button>
-            )}
-            <Button variant="outline" size="sm">
-              <Download className="mr-1 h-3 w-3" />
-              PDF
+        <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+          {!isPaid && (
+            <Button variant="gold" size="sm" onClick={() => onPayment(invoice)}>
+              Encaisser
             </Button>
-          </div>
+          )}
+          <Button variant="outline" size="sm">
+            <Download className="mr-1 h-3 w-3" />
+            PDF
+          </Button>
         </div>
       </div>
     </div>
@@ -173,34 +90,6 @@ const Billing = () => {
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-
-  const filters: FilterConfig[] = [
-    {
-      key: 'status',
-      label: 'Statut',
-      options: Object.entries(statusConfig).map(([value, { label }]) => ({ value, label })),
-    },
-    {
-      key: 'type',
-      label: 'Type',
-      options: Object.entries(typeLabels).map(([value, label]) => ({ value, label })),
-    },
-  ];
-
-  const {
-    filteredData,
-    searchQuery,
-    setSearchQuery,
-    activeFilters,
-    setFilter,
-    clearFilters,
-    hasActiveFilters,
-  } = useSearchFilter({
-    data: invoices,
-    searchFields: ['invoice_number', 'guest.first_name', 'guest.last_name', 'reservation.reservation_number'],
-    filters,
-    persistInUrl: true,
-  });
 
   const handleEdit = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -219,27 +108,14 @@ const Billing = () => {
 
   return (
     <MainLayout title="Facturation" subtitle="Gestion des factures et paiements">
-      {/* Header Actions */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <SearchFilterBar
-          searchPlaceholder="Rechercher une facture..."
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          filters={filters}
-          activeFilters={activeFilters}
-          onFilterChange={setFilter}
-          onClearFilters={clearFilters}
-          hasActiveFilters={hasActiveFilters}
-          onExportCSV={() => exportToCSV(filteredData || [], invoicesExportColumns, 'factures')}
-          onExportExcel={() => exportToExcel(filteredData || [], invoicesExportColumns, 'factures')}
-        />
+        <div />
         <Button variant="gold" className="gap-2" onClick={handleNewInvoice}>
           <Plus className="h-4 w-4" />
           Nouvelle Facture
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-4">
         {statsLoading ? (
           <>
@@ -275,39 +151,6 @@ const Billing = () => {
         )}
       </div>
 
-      {/* Status Filter */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button
-          onClick={() => setFilter('status', 'all')}
-          className={cn(
-            "rounded-full px-4 py-2 text-sm font-medium transition-all",
-            (!activeFilters.status || activeFilters.status === 'all')
-              ? "bg-primary text-primary-foreground shadow-sm" 
-              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-          )}
-        >
-          Toutes ({invoices?.length || 0})
-        </button>
-        {Object.entries(statusConfig).map(([status, config]) => {
-          const count = invoices?.filter(i => i.status === status).length || 0;
-          return (
-            <button
-              key={status}
-              onClick={() => setFilter('status', status)}
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-medium transition-all",
-                activeFilters.status === status 
-                  ? cn(config.className, "shadow-sm") 
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              )}
-            >
-              {config.label} ({count})
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Invoices Grid */}
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {[...Array(6)].map((_, i) => (
@@ -316,7 +159,7 @@ const Billing = () => {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {filteredData?.map((invoice, index) => (
+          {invoices?.map((invoice, index) => (
             <div 
               key={invoice.id}
               className="animate-slide-up"
@@ -328,15 +171,10 @@ const Billing = () => {
         </div>
       )}
 
-      {!isLoading && filteredData?.length === 0 && (
+      {!isLoading && invoices?.length === 0 && (
         <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
           <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium text-muted-foreground">Aucune facture trouvée</p>
-          {hasActiveFilters && (
-            <Button variant="link" onClick={clearFilters} className="mt-2">
-              Effacer les filtres
-            </Button>
-          )}
         </div>
       )}
 
@@ -351,7 +189,7 @@ const Billing = () => {
           open={paymentModalOpen}
           onOpenChange={setPaymentModalOpen}
           invoiceId={selectedInvoice.id}
-          remainingAmount={Number(selectedInvoice.total_amount) - Number(selectedInvoice.paid_amount)}
+          remainingAmount={selectedInvoice.amount}
         />
       )}
     </MainLayout>
