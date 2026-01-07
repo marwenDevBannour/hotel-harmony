@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invoicesApi } from '@/services/api';
 import { toast } from 'sonner';
 import { useGuests } from '@/hooks/useGuests';
 import { useReservations } from '@/hooks/useReservations';
@@ -76,31 +76,31 @@ const InvoiceFormModal = ({ open, onOpenChange, invoice }: InvoiceFormModalProps
     mutationFn: async (data: InvoiceFormData) => {
       const taxAmount = (data.subtotal * data.tax_rate) / 100;
       const totalAmount = data.subtotal + taxAmount;
+      
+      // Map 'partial' to 'pending' for API compatibility
+      const apiStatus = data.status === 'partial' ? 'pending' : data.status;
 
       const invoiceData = {
-        guest_id: data.guest_id,
-        reservation_id: data.reservation_id || null,
+        guestId: data.guest_id,
+        reservationId: data.reservation_id || undefined,
         type: data.type,
-        status: data.status,
+        status: apiStatus as 'draft' | 'pending' | 'paid' | 'cancelled',
         subtotal: data.subtotal,
-        tax_rate: data.tax_rate,
-        tax_amount: taxAmount,
-        total_amount: totalAmount,
-        due_date: data.due_date || null,
-        notes: data.notes || null,
+        taxRate: data.tax_rate,
+        taxAmount: taxAmount,
+        totalAmount: totalAmount,
+        paidAmount: 0,
+        dueDate: data.due_date || undefined,
+        notes: data.notes || undefined,
       };
 
       if (isEditing) {
-        const { error } = await supabase
-          .from('invoices')
-          .update(invoiceData)
-          .eq('id', invoice.id);
-        if (error) throw error;
+        return invoicesApi.update(invoice.id, invoiceData);
       } else {
-        const { error } = await supabase
-          .from('invoices')
-          .insert([{ ...invoiceData, invoice_number: 'temp' }] as any);
-        if (error) throw error;
+        return invoicesApi.create({
+          ...invoiceData,
+          invoiceNumber: '',
+        });
       }
     },
     onSuccess: () => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,7 @@ const Auth = () => {
   const [lastName, setLastName] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,30 +46,12 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        await signIn(email, password);
+        toast({
+          title: 'Bienvenue !',
+          description: 'Connexion réussie',
         });
-
-        if (error) {
-          let message = 'Une erreur est survenue';
-          if (error.message.includes('Invalid login credentials')) {
-            message = 'Email ou mot de passe incorrect';
-          } else if (error.message.includes('Email not confirmed')) {
-            message = 'Veuillez confirmer votre email';
-          }
-          toast({
-            title: 'Erreur de connexion',
-            description: message,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Bienvenue !',
-            description: 'Connexion réussie',
-          });
-          navigate('/');
-        }
+        navigate('/');
       } else {
         const validation = signupSchema.safeParse({ email, password, firstName, lastName });
         if (!validation.success) {
@@ -81,42 +64,25 @@ const Auth = () => {
           return;
         }
 
-        const redirectUrl = `${window.location.origin}/`;
-
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              first_name: firstName,
-              last_name: lastName,
-            },
-          },
+        await signUp({ email, password, firstName, lastName });
+        toast({
+          title: 'Compte créé !',
+          description: 'Votre compte a été créé avec succès',
         });
-
-        if (error) {
-          let message = 'Une erreur est survenue';
-          if (error.message.includes('already registered')) {
-            message = 'Cet email est déjà utilisé';
-          }
-          toast({
-            title: 'Erreur d\'inscription',
-            description: message,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Compte créé !',
-            description: 'Votre compte a été créé avec succès',
-          });
-          navigate('/');
-        }
+        navigate('/');
       }
-    } catch (error) {
+    } catch (error: any) {
+      let message = 'Une erreur est survenue';
+      if (error.message?.includes('Invalid') || error.message?.includes('credentials')) {
+        message = 'Email ou mot de passe incorrect';
+      } else if (error.message?.includes('already')) {
+        message = 'Cet email est déjà utilisé';
+      } else if (error.message) {
+        message = error.message;
+      }
       toast({
-        title: 'Erreur',
-        description: 'Une erreur inattendue est survenue',
+        title: isLogin ? 'Erreur de connexion' : 'Erreur d\'inscription',
+        description: message,
         variant: 'destructive',
       });
     } finally {
