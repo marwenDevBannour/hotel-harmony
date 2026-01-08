@@ -1,8 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { modulesApi, sousModulesApi, Module, SousModule } from '@/services/api';
+import { modulesApi, sousModulesApi, evnmtApi, Module, SousModule, Evnmt } from '@/services/api';
+
+export interface EvnmtItem extends Evnmt {}
+
+export interface SousModuleWithEvnmts extends SousModule {
+  evnmts: EvnmtItem[];
+}
 
 export interface ModuleWithSousModules extends Module {
-  sousModules: SousModule[];
+  sousModules: SousModuleWithEvnmts[];
 }
 
 export function useModules() {
@@ -24,11 +30,28 @@ export function useModules() {
     queryFn: sousModulesApi.getAll,
   });
 
+  const { 
+    data: evnmts = [], 
+    isLoading: evnmtsLoading,
+    error: evnmtsError 
+  } = useQuery({
+    queryKey: ['evnmts'],
+    queryFn: evnmtApi.getAll,
+  });
+
+  // Grouper les événements par sous-module
+  const sousModulesWithEvnmts: SousModuleWithEvnmts[] = sousModules.map(sm => ({
+    ...sm,
+    evnmts: evnmts.filter(e => {
+      const evnmtSmId = e.sousModule?.id ?? (e as any).sousModuleId;
+      return evnmtSmId === sm.id;
+    }),
+  }));
+
   // Grouper les sous-modules par module
   const modulesWithSousModules: ModuleWithSousModules[] = modules.map(module => ({
     ...module,
-    sousModules: sousModules.filter(sm => {
-      // Vérifier à la fois l'objet module imbriqué et moduleId direct
+    sousModules: sousModulesWithEvnmts.filter(sm => {
       const smModuleId = sm.module?.id ?? (sm as any).moduleId;
       return smModuleId === module.id;
     }),
@@ -36,7 +59,9 @@ export function useModules() {
 
   return {
     modules: modulesWithSousModules,
-    isLoading: modulesLoading || sousModulesLoading,
-    error: modulesError || sousModulesError,
+    sousModules: sousModulesWithEvnmts,
+    evnmts,
+    isLoading: modulesLoading || sousModulesLoading || evnmtsLoading,
+    error: modulesError || sousModulesError || evnmtsError,
   };
 }
