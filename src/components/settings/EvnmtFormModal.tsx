@@ -36,7 +36,6 @@ const evnmtSchema = z.object({
   ddeb: z.string().min(1, 'Date de début requise'),
   dfin: z.string().min(1, 'Date de fin requise'),
   bactif: z.boolean(),
-  sousModuleId: z.string().min(1, 'Sous-module requis'),
 });
 
 type EvnmtFormData = z.infer<typeof evnmtSchema>;
@@ -45,20 +44,18 @@ interface EvnmtFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   evnmt: Evnmt | null;
-  sousModules: SousModule[];
+  selectedSousModule: SousModule | null;
   onSubmit: (data: EvnmtInput) => void;
   isLoading: boolean;
-  preselectedSousModuleId?: number;
 }
 
 export function EvnmtFormModal({
   open,
   onOpenChange,
   evnmt,
-  sousModules,
+  selectedSousModule,
   onSubmit,
   isLoading,
-  preselectedSousModuleId,
 }: EvnmtFormModalProps) {
   const form = useForm<EvnmtFormData>({
     resolver: zodResolver(evnmtSchema),
@@ -68,7 +65,6 @@ export function EvnmtFormModal({
       ddeb: new Date().toISOString().split('T')[0],
       dfin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       bactif: true,
-      sousModuleId: '',
     },
   });
 
@@ -80,7 +76,6 @@ export function EvnmtFormModal({
         ddeb: evnmt.ddeb?.split('T')[0] || '',
         dfin: evnmt.dfin?.split('T')[0] || '',
         bactif: evnmt.bactif,
-        sousModuleId: evnmt.sousModule?.id?.toString() || '',
       });
     } else {
       form.reset({
@@ -89,19 +84,19 @@ export function EvnmtFormModal({
         ddeb: new Date().toISOString().split('T')[0],
         dfin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         bactif: true,
-        sousModuleId: preselectedSousModuleId?.toString() || '',
       });
     }
-  }, [evnmt, preselectedSousModuleId, form]);
+  }, [evnmt, form]);
 
   const handleSubmit = (data: EvnmtFormData) => {
+    if (!selectedSousModule) return;
     const input: EvnmtInput = {
       codeEvnmt: data.codeEvnmt,
       libelle: data.libelle,
       ddeb: data.ddeb,
       dfin: data.dfin,
       bactif: data.bactif,
-      sousModuleId: parseInt(data.sousModuleId, 10),
+      sousModuleId: selectedSousModule.id,
     };
     onSubmit(input);
     onOpenChange(false);
@@ -115,37 +110,17 @@ export function EvnmtFormModal({
             {evnmt ? 'Modifier l\'événement' : 'Nouvel événement'}
           </DialogTitle>
           <DialogDescription>
-            {evnmt
-              ? 'Modifiez les informations de l\'événement'
-              : 'Créez un nouvel événement pour le sous-module sélectionné'}
+            {selectedSousModule ? (
+              <>Sous-module parent: <span className="font-medium">{selectedSousModule.libelle}</span></>
+            ) : (
+              evnmt
+                ? 'Modifiez les informations de l\'événement'
+                : 'Créez un nouvel événement pour le sous-module sélectionné'
+            )}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="sousModuleId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sous-module parent</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un sous-module" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {sousModules.map((sm) => (
-                        <SelectItem key={sm.id} value={sm.id.toString()}>
-                          {sm.libelle} ({sm.codeS})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="codeEvnmt"
