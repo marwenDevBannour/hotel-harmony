@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { modulesApi, sousModulesApi, Module, SousModule, ModuleInput, SousModuleInput } from '@/services/api';
+import { modulesApi, sousModulesApi, evnmtApi, Module, SousModule, Evnmt, ModuleInput, SousModuleInput, EvnmtInput } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 export function useModulesCrud() {
@@ -24,6 +24,16 @@ export function useModulesCrud() {
   } = useQuery({
     queryKey: ['sousModules'],
     queryFn: sousModulesApi.getAll,
+  });
+
+  // Evnmts queries
+  const { 
+    data: evnmts = [], 
+    isLoading: evnmtsLoading,
+    error: evnmtsError 
+  } = useQuery({
+    queryKey: ['evnmts'],
+    queryFn: evnmtApi.getAll,
   });
 
   // Module mutations
@@ -54,7 +64,8 @@ export function useModulesCrud() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['modules'] });
       queryClient.invalidateQueries({ queryKey: ['sousModules'] });
-      toast({ title: 'Module supprimé', description: 'Le module a été supprimé avec succès.' });
+      queryClient.invalidateQueries({ queryKey: ['evnmts'] });
+      toast({ title: 'Module supprimé', description: 'Le module et ses sous-modules ont été supprimés.' });
     },
     onError: (error: Error) => {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
@@ -88,7 +99,42 @@ export function useModulesCrud() {
     mutationFn: (id: number) => sousModulesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sousModules'] });
-      toast({ title: 'Sous-module supprimé', description: 'Le sous-module a été supprimé avec succès.' });
+      queryClient.invalidateQueries({ queryKey: ['evnmts'] });
+      toast({ title: 'Sous-module supprimé', description: 'Le sous-module et ses événements ont été supprimés.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Evnmt mutations
+  const createEvnmt = useMutation({
+    mutationFn: (data: EvnmtInput) => evnmtApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evnmts'] });
+      toast({ title: 'Événement créé', description: 'L\'événement a été créé avec succès.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const updateEvnmt = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<EvnmtInput> }) => evnmtApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evnmts'] });
+      toast({ title: 'Événement mis à jour', description: 'L\'événement a été modifié avec succès.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const deleteEvnmt = useMutation({
+    mutationFn: (id: number) => evnmtApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evnmts'] });
+      toast({ title: 'Événement supprimé', description: 'L\'événement a été supprimé avec succès.' });
     },
     onError: (error: Error) => {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
@@ -99,8 +145,9 @@ export function useModulesCrud() {
     // Data
     modules,
     sousModules,
-    isLoading: modulesLoading || sousModulesLoading,
-    error: modulesError || sousModulesError,
+    evnmts,
+    isLoading: modulesLoading || sousModulesLoading || evnmtsLoading,
+    error: modulesError || sousModulesError || evnmtsError,
     
     // Module actions
     createModule: createModule.mutate,
@@ -117,5 +164,13 @@ export function useModulesCrud() {
     isCreatingSousModule: createSousModule.isPending,
     isUpdatingSousModule: updateSousModule.isPending,
     isDeletingSousModule: deleteSousModule.isPending,
+    
+    // Evnmt actions
+    createEvnmt: createEvnmt.mutate,
+    updateEvnmt: updateEvnmt.mutate,
+    deleteEvnmt: deleteEvnmt.mutate,
+    isCreatingEvnmt: createEvnmt.isPending,
+    isUpdatingEvnmt: updateEvnmt.isPending,
+    isDeletingEvnmt: deleteEvnmt.isPending,
   };
 }
