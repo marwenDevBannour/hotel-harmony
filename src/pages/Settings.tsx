@@ -441,9 +441,14 @@ export default function Settings() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col">
+                              <div className="flex flex-col gap-1">
                                 <span className="font-medium text-sm">{sousModule.libelle}</span>
                                 <span className="text-xs text-muted-foreground">{sousModule.codeS}</span>
+                                {!selectedModuleId && sousModule.module && (
+                                  <Badge variant="outline" className="text-xs w-fit">
+                                    {sousModule.module.libelle}
+                                  </Badge>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell onClick={(e) => e.stopPropagation()}>
@@ -548,9 +553,14 @@ export default function Settings() {
                         return (
                           <TableRow key={evnmt.id} className="hover:bg-muted/50">
                             <TableCell>
-                              <div className="flex flex-col">
+                              <div className="flex flex-col gap-1">
                                 <span className="font-medium text-sm">{evnmt.libelle}</span>
                                 <span className="text-xs text-muted-foreground">{evnmt.codeEvnmt}</span>
+                                {!selectedSousModuleId && evnmt.sousModule && (
+                                  <Badge variant="outline" className="text-xs w-fit">
+                                    {evnmt.sousModule.libelle}
+                                  </Badge>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
