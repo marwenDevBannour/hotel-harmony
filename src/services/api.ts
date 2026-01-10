@@ -1,5 +1,38 @@
+import { toast } from '@/hooks/use-toast';
+
 // Configuration de l'API Spring Boot
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+
+// Helper pour afficher les erreurs avec toast
+function showErrorToast(status: number, message: string, url: string) {
+  const origin = window.location.origin;
+  
+  if (status === 401) {
+    toast({
+      title: "🔐 Session expirée (401)",
+      description: message,
+      variant: "destructive",
+    });
+  } else if (status === 403) {
+    toast({
+      title: "🚫 Accès refusé (403)",
+      description: (
+        `${message}\n\n` +
+        `💡 Vérifiez:\n` +
+        `• CORS: Origin "${origin}" autorisé?\n` +
+        `• Endpoint: ${url}\n` +
+        `• Permissions utilisateur`
+      ),
+      variant: "destructive",
+    });
+  } else {
+    toast({
+      title: `❌ Erreur ${status}`,
+      description: message,
+      variant: "destructive",
+    });
+  }
+}
 
 // Helper pour les requêtes HTTP
 async function fetchApi<T>(
@@ -18,13 +51,26 @@ async function fetchApi<T>(
     defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
-  });
+  let response: Response;
+  
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    });
+  } catch (networkError) {
+    // Erreur réseau (backend inaccessible, CORS bloqué au niveau navigateur, etc.)
+    const errorMsg = `Impossible de joindre le backend.\n\n💡 Vérifiez:\n• Backend démarré sur ${API_BASE_URL}?\n• CORS configuré pour "${window.location.origin}"?\n• Utilisez ngrok si preview Lovable`;
+    toast({
+      title: "🔌 Erreur réseau",
+      description: errorMsg,
+      variant: "destructive",
+    });
+    throw new Error(errorMsg);
+  }
 
   if (!response.ok) {
     const contentType = response.headers.get('content-type') || '';
@@ -45,15 +91,20 @@ async function fetchApi<T>(
       if (text.trim()) message = text.slice(0, 300);
     }
 
-    // Si le token est invalide/expiré, on force une reconnexion
+    // Messages spécifiques pour 401/403
     if (response.status === 401) {
       localStorage.removeItem('auth_token');
       message = message === 'Erreur HTTP: 401' ? 'Session expirée. Veuillez vous reconnecter.' : message;
     }
 
     if (response.status === 403) {
-      message = message === 'Erreur HTTP: 403' ? 'Accès refusé (403). Droits insuffisants ou configuration sécurité.' : message;
+      message = message === 'Erreur HTTP: 403' 
+        ? 'Accès refusé. Problème CORS ou permissions insuffisantes.' 
+        : message;
     }
+
+    // Afficher le toast avec détails
+    showErrorToast(response.status, message, url);
 
     throw new Error(message);
   }
