@@ -377,7 +377,8 @@ export default function Settings() {
                 <Button 
                   size="sm" 
                   onClick={() => { setEditingSousModule(null); setSousModuleModalOpen(true); }}
-                  disabled={modules.length === 0}
+                  disabled={!selectedModuleId}
+                  title={!selectedModuleId ? 'Sélectionnez d\'abord un module' : ''}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -493,7 +494,8 @@ export default function Settings() {
                 <Button 
                   size="sm" 
                   onClick={() => { setEditingEvnmt(null); setEvnmtModalOpen(true); }}
-                  disabled={sousModules.length === 0}
+                  disabled={!selectedSousModuleId}
+                  title={!selectedSousModuleId ? 'Sélectionnez d\'abord un sous-module' : ''}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -615,7 +617,7 @@ export default function Settings() {
           if (!open) setEditingSousModule(null);
         }}
         sousModule={editingSousModule}
-        modules={modules}
+        selectedModule={selectedModule ?? null}
         onSubmit={handleSousModuleSubmit}
         isLoading={isCreatingSousModule || isUpdatingSousModule}
       />
@@ -628,10 +630,9 @@ export default function Settings() {
           if (!open) setEditingEvnmt(null);
         }}
         evnmt={editingEvnmt}
-        sousModules={sousModules}
+        selectedSousModule={selectedSousModule ?? null}
         onSubmit={handleEvnmtSubmit}
         isLoading={isCreatingEvnmt || isUpdatingEvnmt}
-        preselectedSousModuleId={selectedSousModuleId ?? undefined}
       />
 
       {/* Delete Module Confirmation */}

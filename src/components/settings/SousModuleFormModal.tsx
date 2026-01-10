@@ -32,7 +32,6 @@ const sousModuleSchema = z.object({
   libelle: z.string().min(1, 'Le libellé est requis').max(100, 'Le libellé ne peut pas dépasser 100 caractères'),
   ddeb: z.string().min(1, 'La date de début est requise'),
   dfin: z.string().min(1, 'La date de fin est requise'),
-  moduleId: z.string().min(1, 'Le module parent est requis'),
 });
 
 type SousModuleFormData = z.infer<typeof sousModuleSchema>;
@@ -41,7 +40,7 @@ interface SousModuleFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sousModule?: SousModule | null;
-  modules: Module[];
+  selectedModule: Module | null;
   onSubmit: (data: SousModuleInput) => void;
   isLoading?: boolean;
 }
@@ -50,7 +49,7 @@ export function SousModuleFormModal({
   open,
   onOpenChange,
   sousModule,
-  modules,
+  selectedModule,
   onSubmit,
   isLoading,
 }: SousModuleFormModalProps) {
@@ -63,7 +62,6 @@ export function SousModuleFormModal({
       libelle: '',
       ddeb: new Date().toISOString().split('T')[0],
       dfin: '2099-12-31',
-      moduleId: '',
     },
   });
 
@@ -74,7 +72,6 @@ export function SousModuleFormModal({
         libelle: sousModule.libelle,
         ddeb: sousModule.ddeb?.split('T')[0] || new Date().toISOString().split('T')[0],
         dfin: sousModule.dfin?.split('T')[0] || '2099-12-31',
-        moduleId: sousModule.module?.id?.toString() || '',
       });
     } else {
       form.reset({
@@ -82,18 +79,18 @@ export function SousModuleFormModal({
         libelle: '',
         ddeb: new Date().toISOString().split('T')[0],
         dfin: '2099-12-31',
-        moduleId: '',
       });
     }
   }, [sousModule, form]);
 
   const handleSubmit = (data: SousModuleFormData) => {
+    if (!selectedModule) return;
     onSubmit({
       codeS: data.codeS,
       libelle: data.libelle,
       ddeb: data.ddeb,
       dfin: data.dfin,
-      moduleId: parseInt(data.moduleId, 10),
+      moduleId: selectedModule.id,
     });
     onOpenChange(false);
   };
@@ -105,33 +102,14 @@ export function SousModuleFormModal({
           <DialogTitle>
             {isEditing ? 'Modifier le sous-module' : 'Nouveau sous-module'}
           </DialogTitle>
+          {selectedModule && (
+            <p className="text-sm text-muted-foreground">
+              Module parent: <span className="font-medium">{selectedModule.libelle}</span>
+            </p>
+          )}
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="moduleId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Module parent</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un module" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {modules.map((module) => (
-                        <SelectItem key={module.id} value={module.id.toString()}>
-                          {module.libelle}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="codeS"
