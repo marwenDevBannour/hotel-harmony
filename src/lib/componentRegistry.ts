@@ -1,10 +1,18 @@
 import { ComponentType } from 'react';
-import { SousModule } from '@/services/api';
+import { SousModule, Evnmt } from '@/services/api';
+import { ComponentConfig } from '@/types/componentConfig';
+
+// Extension de l'événement avec la config typée
+export interface EvnmtWithConfig extends Evnmt {
+  config?: ComponentConfig;
+  componentType?: 'form' | 'table' | 'list' | 'dashboard' | 'settings';
+}
 
 // Type pour les props des composants de module
 export interface ModuleComponentProps {
   sousModule: SousModule;
   moduleCode: string;
+  evnmt?: EvnmtWithConfig;
 }
 
 // Type pour le registre de composants

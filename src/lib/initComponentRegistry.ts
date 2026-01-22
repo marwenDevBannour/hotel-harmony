@@ -4,11 +4,22 @@
 import { registerComponent } from '@/lib/componentRegistry';
 import { ListComponent } from '@/components/modules/ListComponent';
 import { FormComponent } from '@/components/modules/FormComponent';
+import { TableComponent } from '@/components/modules/TableComponent';
 import { DashboardComponent } from '@/components/modules/DashboardComponent';
 import { SettingsComponent } from '@/components/modules/SettingsComponent';
 
-// Enregistrement des composants par code de sous-module
-// Ajoutez vos mappings ici
+// =====================================================
+// Mappings par TYPE de composant (utilisé par componentType des événements)
+// =====================================================
+registerComponent('TYPE_FORM', FormComponent);
+registerComponent('TYPE_TABLE', TableComponent);
+registerComponent('TYPE_LIST', ListComponent);
+registerComponent('TYPE_DASHBOARD', DashboardComponent);
+registerComponent('TYPE_SETTINGS', SettingsComponent);
+
+// =====================================================
+// Mappings par CODE de sous-module (fallback legacy)
+// =====================================================
 
 // Composants de type Liste
 registerComponent('LIST', ListComponent);
@@ -26,6 +37,12 @@ registerComponent('CREATE', FormComponent);
 registerComponent('NEW', FormComponent);
 registerComponent('ADD', FormComponent);
 registerComponent('AJOUTER', FormComponent);
+
+// Composants de type Table
+registerComponent('TABLE', TableComponent);
+registerComponent('TABLEAU_DATA', TableComponent);
+registerComponent('DATA_TABLE', TableComponent);
+registerComponent('GRILLE', TableComponent);
 
 // Composants de type Tableau de bord
 registerComponent('DASHBOARD', DashboardComponent);
