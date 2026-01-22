@@ -11,8 +11,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Settings2 } from 'lucide-react';
 import { ColumnConfig, FieldConfig, ComponentConfig } from '@/types/componentConfig';
+import { FieldOptionsModal } from './FieldOptionsModal';
 
 interface ConfigEditorProps {
   componentType: 'form' | 'table' | 'list' | 'dashboard' | 'settings';
@@ -40,6 +41,9 @@ const fieldTypes = [
 ];
 
 export function ConfigEditor({ componentType, config, onChange }: ConfigEditorProps) {
+  const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null);
+  const [fieldOptionsOpen, setFieldOptionsOpen] = useState(false);
+
   const isTableOrList = componentType === 'table' || componentType === 'list';
   const isForm = componentType === 'form';
 
@@ -93,6 +97,20 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
     fields.splice(index, 1);
     onChange({ ...config, fields });
   };
+
+  const handleOpenFieldOptions = (index: number) => {
+    setEditingFieldIndex(index);
+    setFieldOptionsOpen(true);
+  };
+
+  const handleSaveFieldOptions = (updatedField: FieldConfig) => {
+    if (editingFieldIndex !== null) {
+      handleUpdateField(editingFieldIndex, updatedField);
+    }
+    setEditingFieldIndex(null);
+  };
+
+  const editingField = editingFieldIndex !== null ? (config.fields || [])[editingFieldIndex] : null;
 
   if (componentType === 'dashboard' || componentType === 'settings') {
     return (
@@ -310,6 +328,15 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7"
+                    onClick={() => handleOpenFieldOptions(index)}
+                    title="Configurer les options"
+                  >
+                    <Settings2 className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
                     onClick={() => handleRemoveField(index)}
                   >
                     <Trash2 className="h-3 w-3 text-destructive" />
@@ -320,6 +347,14 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
           </CardContent>
         </Card>
       )}
+
+      {/* Field Options Modal */}
+      <FieldOptionsModal
+        open={fieldOptionsOpen}
+        onOpenChange={setFieldOptionsOpen}
+        field={editingField}
+        onSave={handleSaveFieldOptions}
+      />
     </div>
   );
 }
