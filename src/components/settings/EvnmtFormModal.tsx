@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Evnmt, SousModule } from '@/hooks/useModulesCrud';
 import { EvnmtInput } from '@/services/api';
+import { ComponentConfig } from '@/types/componentConfig';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,7 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileText, Table, List, LayoutDashboard, Settings } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileText, Table, List, LayoutDashboard, Settings, Eye } from 'lucide-react';
+import { ConfigEditor } from './ConfigEditor';
+import { ComponentTypePreview } from './ComponentTypePreview';
 
 const componentTypeOptions = [
   { value: 'form', label: 'Formulaire', icon: FileText, description: 'Saisie de données' },
@@ -56,7 +60,7 @@ interface EvnmtFormModalProps {
   onOpenChange: (open: boolean) => void;
   evnmt: Evnmt | null;
   selectedSousModule: SousModule | null;
-  onSubmit: (data: EvnmtInput) => void;
+  onSubmit: (data: EvnmtInput & { componentType?: string; config?: ComponentConfig }) => void;
   isLoading: boolean;
 }
 
@@ -68,6 +72,9 @@ export function EvnmtFormModal({
   onSubmit,
   isLoading,
 }: EvnmtFormModalProps) {
+  const [activeTab, setActiveTab] = useState('general');
+  const [config, setConfig] = useState<ComponentConfig>({});
+
   const form = useForm<EvnmtFormData>({
     resolver: zodResolver(evnmtSchema),
     defaultValues: {
@@ -80,6 +87,8 @@ export function EvnmtFormModal({
     },
   });
 
+  const componentType = form.watch('componentType');
+
   useEffect(() => {
     if (evnmt) {
       form.reset({
@@ -88,8 +97,9 @@ export function EvnmtFormModal({
         ddeb: evnmt.ddeb?.split('T')[0] || '',
         dfin: evnmt.dfin?.split('T')[0] || '',
         bactif: evnmt.bactif,
-        componentType: (evnmt as any).componentType || 'form',
+        componentType: evnmt.componentType || 'form',
       });
+      setConfig((evnmt as any).config || {});
     } else {
       form.reset({
         codeEvnmt: '',
@@ -99,12 +109,14 @@ export function EvnmtFormModal({
         bactif: true,
         componentType: 'form',
       });
+      setConfig({});
     }
-  }, [evnmt, form]);
+    setActiveTab('general');
+  }, [evnmt, form, open]);
 
   const handleSubmit = (data: EvnmtFormData) => {
     if (!selectedSousModule) return;
-    const input: EvnmtInput & { componentType?: string } = {
+    const input: EvnmtInput & { componentType?: string; config?: ComponentConfig } = {
       codeEvnmt: data.codeEvnmt,
       libelle: data.libelle,
       ddeb: data.ddeb,
@@ -112,6 +124,7 @@ export function EvnmtFormModal({
       bactif: data.bactif,
       sousModuleId: selectedSousModule.id as number,
       componentType: data.componentType,
+      config,
     };
     onSubmit(input);
     onOpenChange(false);
@@ -119,7 +132,7 @@ export function EvnmtFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {evnmt ? 'Modifier l\'événement' : 'Nouvel événement'}
@@ -134,125 +147,157 @@ export function EvnmtFormModal({
             )}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="codeEvnmt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Code événement</FormLabel>
-                  <FormControl>
-                    <Input placeholder="EVT_001" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="libelle"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Libellé</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nom de l'événement" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="componentType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type de composant</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {componentTypeOptions.map((option) => {
-                        const Icon = option.icon;
-                        return (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4 text-muted-foreground" />
-                              <span>{option.label}</span>
-                              <span className="text-xs text-muted-foreground">
-                                - {option.description}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="ddeb"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date début</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="dfin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date fin</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="bactif"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel>Actif</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      L'événement sera visible et actif
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="general">Général</TabsTrigger>
+            <TabsTrigger value="config">Configuration</TabsTrigger>
+            <TabsTrigger value="preview">
+              <Eye className="h-4 w-4 mr-1" />
+              Aperçu
+            </TabsTrigger>
+          </TabsList>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex-1 overflow-y-auto py-4">
+                <TabsContent value="general" className="mt-0 space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="codeEvnmt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Code événement</FormLabel>
+                        <FormControl>
+                          <Input placeholder="EVT_001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="libelle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Libellé</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nom de l'événement" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="componentType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type de composant</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner un type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {componentTypeOptions.map((option) => {
+                              const Icon = option.icon;
+                              return (
+                                <SelectItem key={option.value} value={option.value}>
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="h-4 w-4 text-muted-foreground" />
+                                    <span>{option.label}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      - {option.description}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="ddeb"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date début</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Enregistrement...' : evnmt ? 'Modifier' : 'Créer'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                    <FormField
+                      control={form.control}
+                      name="dfin"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date fin</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="bactif"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel>Actif</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            L'événement sera visible et actif
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="config" className="mt-0">
+                  <ConfigEditor
+                    componentType={componentType}
+                    config={config}
+                    onChange={setConfig}
+                  />
+                </TabsContent>
+
+                <TabsContent value="preview" className="mt-0">
+                  <ComponentTypePreview
+                    componentType={componentType}
+                    config={config}
+                  />
+                </TabsContent>
+              </div>
+
+              <DialogFooter className="pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Enregistrement...' : evnmt ? 'Modifier' : 'Créer'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
