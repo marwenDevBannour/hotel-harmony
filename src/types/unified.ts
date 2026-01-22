@@ -119,6 +119,9 @@ export interface UnifiedSousModule {
   module?: UnifiedModule;
 }
 
+// Types de composants disponibles pour les événements
+export type EventComponentType = 'form' | 'table' | 'list' | 'dashboard' | 'settings';
+
 export interface UnifiedEvnmt {
   id: string | number;
   codeEvnmt: string;
@@ -128,4 +131,5 @@ export interface UnifiedEvnmt {
   bactif: boolean;
   sousModuleId: string | number;
   sousModule?: UnifiedSousModule;
+  componentType: EventComponentType;
 }

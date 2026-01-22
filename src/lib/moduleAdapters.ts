@@ -80,6 +80,7 @@ export const normalizeEvnmt = (evnmt: ApiEvnmt | SupabaseEvnmt): UnifiedEvnmt =>
       bactif: evnmt.bactif,
       sousModuleId: evnmt.sous_module_id,
       sousModule: evnmt.sousModule ? normalizeSousModule(evnmt.sousModule) : undefined,
+      componentType: (evnmt as any).component_type || 'form',
     };
   } else {
     // Spring Boot evnmt
@@ -92,6 +93,7 @@ export const normalizeEvnmt = (evnmt: ApiEvnmt | SupabaseEvnmt): UnifiedEvnmt =>
       bactif: evnmt.bactif,
       sousModuleId: evnmt.sousModule?.id || 0,
       sousModule: evnmt.sousModule ? normalizeSousModule(evnmt.sousModule) : undefined,
+      componentType: (evnmt as any).componentType || 'form',
     };
   }
 };

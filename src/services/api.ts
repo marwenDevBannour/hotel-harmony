@@ -368,6 +368,7 @@ export interface EvnmtInput {
   dfin: string;
   bactif: boolean;
   sousModuleId: number;
+  componentType?: 'form' | 'table' | 'list' | 'dashboard' | 'settings';
 }
 
 export interface UsersInput {

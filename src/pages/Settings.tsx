@@ -1,11 +1,20 @@
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Folder, FolderOpen, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Folder, FolderOpen, Calendar, Search, ChevronLeft, ChevronRight, FileText, Table as TableIcon, List, LayoutDashboard, Settings as SettingsIcon } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { useModulesCrud, Module, SousModule, Evnmt } from '@/hooks/useModulesCrud';
 import { ModuleFormModal } from '@/components/settings/ModuleFormModal';
 import { SousModuleFormModal } from '@/components/settings/SousModuleFormModal';
 import { EvnmtFormModal } from '@/components/settings/EvnmtFormModal';
 import { getIconByCode } from '@/lib/iconMapping';
+
+// Map component types to icons and labels
+const componentTypeConfig: Record<string, { icon: React.ElementType; label: string; color: string }> = {
+  form: { icon: FileText, label: 'Form', color: 'bg-blue-100 text-blue-700' },
+  table: { icon: TableIcon, label: 'Table', color: 'bg-green-100 text-green-700' },
+  list: { icon: List, label: 'List', color: 'bg-purple-100 text-purple-700' },
+  dashboard: { icon: LayoutDashboard, label: 'Dashboard', color: 'bg-orange-100 text-orange-700' },
+  settings: { icon: SettingsIcon, label: 'Settings', color: 'bg-gray-100 text-gray-700' },
+};
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -542,6 +551,7 @@ export default function Settings() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Libellé</TableHead>
+                        <TableHead className="w-[70px]">Type</TableHead>
                         <TableHead className="w-[60px]">Statut</TableHead>
                         <TableHead className="w-[80px]">Actions</TableHead>
                       </TableRow>
@@ -549,6 +559,8 @@ export default function Settings() {
                     <TableBody>
                       {paginatedEvnmts.map((evnmt) => {
                         const active = isActive(evnmt.ddeb, evnmt.dfin) && evnmt.bactif;
+                        const typeConfig = componentTypeConfig[(evnmt as any).componentType || 'form'];
+                        const TypeIcon = typeConfig?.icon || FileText;
                         return (
                           <TableRow key={evnmt.id} className="hover:bg-muted/50">
                             <TableCell>
@@ -560,6 +572,12 @@ export default function Settings() {
                                     {evnmt.sousModule.libelle}
                                   </Badge>
                                 )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${typeConfig?.color || 'bg-muted text-muted-foreground'}`}>
+                                <TypeIcon className="h-3 w-3" />
+                                <span>{typeConfig?.label || 'Form'}</span>
                               </div>
                             </TableCell>
                             <TableCell>

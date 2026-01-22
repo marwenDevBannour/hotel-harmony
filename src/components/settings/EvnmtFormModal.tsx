@@ -23,6 +23,22 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { FileText, Table, List, LayoutDashboard, Settings } from 'lucide-react';
+
+const componentTypeOptions = [
+  { value: 'form', label: 'Formulaire', icon: FileText, description: 'Saisie de données' },
+  { value: 'table', label: 'Tableau', icon: Table, description: 'Affichage tabulaire' },
+  { value: 'list', label: 'Liste', icon: List, description: 'Liste d\'éléments' },
+  { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Tableau de bord' },
+  { value: 'settings', label: 'Paramètres', icon: Settings, description: 'Configuration' },
+] as const;
 
 const evnmtSchema = z.object({
   codeEvnmt: z.string().min(1, 'Le code est requis').max(20, 'Max 20 caractères'),
@@ -30,6 +46,7 @@ const evnmtSchema = z.object({
   ddeb: z.string().min(1, 'Date de début requise'),
   dfin: z.string().min(1, 'Date de fin requise'),
   bactif: z.boolean(),
+  componentType: z.enum(['form', 'table', 'list', 'dashboard', 'settings']),
 });
 
 type EvnmtFormData = z.infer<typeof evnmtSchema>;
@@ -59,6 +76,7 @@ export function EvnmtFormModal({
       ddeb: new Date().toISOString().split('T')[0],
       dfin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       bactif: true,
+      componentType: 'form',
     },
   });
 
@@ -70,6 +88,7 @@ export function EvnmtFormModal({
         ddeb: evnmt.ddeb?.split('T')[0] || '',
         dfin: evnmt.dfin?.split('T')[0] || '',
         bactif: evnmt.bactif,
+        componentType: (evnmt as any).componentType || 'form',
       });
     } else {
       form.reset({
@@ -78,19 +97,21 @@ export function EvnmtFormModal({
         ddeb: new Date().toISOString().split('T')[0],
         dfin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         bactif: true,
+        componentType: 'form',
       });
     }
   }, [evnmt, form]);
 
   const handleSubmit = (data: EvnmtFormData) => {
     if (!selectedSousModule) return;
-    const input: EvnmtInput = {
+    const input: EvnmtInput & { componentType?: string } = {
       codeEvnmt: data.codeEvnmt,
       libelle: data.libelle,
       ddeb: data.ddeb,
       dfin: data.dfin,
       bactif: data.bactif,
-      sousModuleId: selectedSousModule.id as number, // Type cast for API compatibility
+      sousModuleId: selectedSousModule.id as number,
+      componentType: data.componentType,
     };
     onSubmit(input);
     onOpenChange(false);
@@ -137,6 +158,39 @@ export function EvnmtFormModal({
                   <FormControl>
                     <Input placeholder="Nom de l'événement" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="componentType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type de composant</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {componentTypeOptions.map((option) => {
+                        const Icon = option.icon;
+                        return (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <span>{option.label}</span>
+                              <span className="text-xs text-muted-foreground">
+                                - {option.description}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
