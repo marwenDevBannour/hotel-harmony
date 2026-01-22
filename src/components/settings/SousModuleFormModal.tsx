@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Module, SousModule, SousModuleInput } from '@/services/api';
+import { Module, SousModule } from '@/hooks/useModulesCrud';
+import { SousModuleInput } from '@/services/api';
 import {
   Dialog,
   DialogContent,
@@ -17,13 +18,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -90,7 +84,7 @@ export function SousModuleFormModal({
       libelle: data.libelle,
       ddeb: data.ddeb,
       dfin: data.dfin,
-      moduleId: selectedModule.id,
+      moduleId: selectedModule.id as number, // Type cast for API compatibility
     });
     onOpenChange(false);
   };

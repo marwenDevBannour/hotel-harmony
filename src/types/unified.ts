@@ -99,3 +99,33 @@ export interface UnifiedRestaurantOrder {
   guest?: UnifiedGuest;
   items?: any[];
 }
+
+// Types unifiés pour la hiérarchie Modules/Sous-Modules/Événements
+export interface UnifiedModule {
+  id: string | number;
+  codeM: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string | null;
+}
+
+export interface UnifiedSousModule {
+  id: string | number;
+  codeS: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string | null;
+  moduleId: string | number;
+  module?: UnifiedModule;
+}
+
+export interface UnifiedEvnmt {
+  id: string | number;
+  codeEvnmt: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string | null;
+  bactif: boolean;
+  sousModuleId: string | number;
+  sousModule?: UnifiedSousModule;
+}

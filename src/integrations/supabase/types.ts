@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      evnmts: {
+        Row: {
+          bactif: boolean
+          code_evnmt: string
+          created_at: string
+          ddeb: string
+          dfin: string | null
+          id: string
+          libelle: string
+          sous_module_id: string
+          updated_at: string
+        }
+        Insert: {
+          bactif?: boolean
+          code_evnmt: string
+          created_at?: string
+          ddeb?: string
+          dfin?: string | null
+          id?: string
+          libelle: string
+          sous_module_id: string
+          updated_at?: string
+        }
+        Update: {
+          bactif?: boolean
+          code_evnmt?: string
+          created_at?: string
+          ddeb?: string
+          dfin?: string | null
+          id?: string
+          libelle?: string
+          sous_module_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evnmts_sous_module_id_fkey"
+            columns: ["sous_module_id"]
+            isOneToOne: false
+            referencedRelation: "sous_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           created_at: string
@@ -210,6 +254,36 @@ export type Database = {
           image_url?: string | null
           name?: string
           price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      modules: {
+        Row: {
+          code_m: string
+          created_at: string
+          ddeb: string
+          dfin: string | null
+          id: string
+          libelle: string
+          updated_at: string
+        }
+        Insert: {
+          code_m: string
+          created_at?: string
+          ddeb?: string
+          dfin?: string | null
+          id?: string
+          libelle: string
+          updated_at?: string
+        }
+        Update: {
+          code_m?: string
+          created_at?: string
+          ddeb?: string
+          dfin?: string | null
+          id?: string
+          libelle?: string
           updated_at?: string
         }
         Relationships: []
@@ -552,6 +626,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sous_modules: {
+        Row: {
+          code_s: string
+          created_at: string
+          ddeb: string
+          dfin: string | null
+          id: string
+          libelle: string
+          module_id: string
+          updated_at: string
+        }
+        Insert: {
+          code_s: string
+          created_at?: string
+          ddeb?: string
+          dfin?: string | null
+          id?: string
+          libelle: string
+          module_id: string
+          updated_at?: string
+        }
+        Update: {
+          code_s?: string
+          created_at?: string
+          ddeb?: string
+          dfin?: string | null
+          id?: string
+          libelle?: string
+          module_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sous_modules_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_roles: {
         Row: {

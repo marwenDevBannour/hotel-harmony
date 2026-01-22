@@ -17,6 +17,42 @@ export type SupabaseMenuItem = Tables['menu_items']['Row'];
 export type SupabaseRestaurantOrder = Tables['restaurant_orders']['Row'];
 export type SupabaseRestaurantTable = Tables['restaurant_tables']['Row'];
 
+// Types pour les modules (tables custom - pas encore dans types.ts)
+export interface SupabaseModule {
+  id: string;
+  code_m: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupabaseSousModule {
+  id: string;
+  code_s: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string | null;
+  module_id: string;
+  module?: SupabaseModule;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupabaseEvnmt {
+  id: string;
+  code_evnmt: string;
+  libelle: string;
+  ddeb: string;
+  dfin: string | null;
+  bactif: boolean;
+  sous_module_id: string;
+  sousModule?: SupabaseSousModule;
+  created_at: string;
+  updated_at: string;
+}
+
 // =====================
 // API Rooms (Supabase)
 // =====================
@@ -295,6 +331,206 @@ export const supabaseRestaurantApi = {
   
   deleteOrder: async (id: string) => {
     const { error } = await supabase.from('restaurant_orders').delete().eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// =====================
+// API Modules (Supabase)
+// Note: Ces tables sont nouvelles et pas encore dans types.ts auto-généré
+// On utilise des requêtes avec casting explicite
+// =====================
+
+// Helper pour contourner le typage strict sur les nouvelles tables
+const fromTable = (table: string) => {
+  return (supabase as any).from(table);
+};
+
+export const supabaseModulesApi = {
+  getAll: async (): Promise<SupabaseModule[]> => {
+    const { data, error } = await fromTable('modules')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  
+  getById: async (id: string): Promise<SupabaseModule> => {
+    const { data, error } = await fromTable('modules')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  create: async (module: { code_m: string; libelle: string; ddeb: string; dfin?: string }): Promise<SupabaseModule> => {
+    const { data, error } = await fromTable('modules')
+      .insert(module)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  update: async (id: string, module: Partial<{ code_m: string; libelle: string; ddeb: string; dfin: string }>): Promise<SupabaseModule> => {
+    const { data, error } = await fromTable('modules')
+      .update(module)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  delete: async (id: string): Promise<void> => {
+    const { error } = await fromTable('modules')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// =====================
+// API Sous-Modules (Supabase)
+// =====================
+export const supabaseSousModulesApi = {
+  getAll: async (): Promise<SupabaseSousModule[]> => {
+    const { data, error } = await fromTable('sous_modules')
+      .select(`
+        *,
+        module:modules(*)
+      `)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  
+  getByModuleId: async (moduleId: string): Promise<SupabaseSousModule[]> => {
+    const { data, error } = await fromTable('sous_modules')
+      .select(`
+        *,
+        module:modules(*)
+      `)
+      .eq('module_id', moduleId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  
+  getById: async (id: string): Promise<SupabaseSousModule> => {
+    const { data, error } = await fromTable('sous_modules')
+      .select(`
+        *,
+        module:modules(*)
+      `)
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  create: async (sousModule: { code_s: string; libelle: string; ddeb: string; dfin?: string; module_id: string }): Promise<SupabaseSousModule> => {
+    const { data, error } = await fromTable('sous_modules')
+      .insert(sousModule)
+      .select(`
+        *,
+        module:modules(*)
+      `)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  update: async (id: string, sousModule: Partial<{ code_s: string; libelle: string; ddeb: string; dfin: string; module_id: string }>): Promise<SupabaseSousModule> => {
+    const { data, error } = await fromTable('sous_modules')
+      .update(sousModule)
+      .eq('id', id)
+      .select(`
+        *,
+        module:modules(*)
+      `)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  delete: async (id: string): Promise<void> => {
+    const { error } = await fromTable('sous_modules')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+};
+
+// =====================
+// API Evnmts (Supabase)
+// =====================
+export const supabaseEvnmtsApi = {
+  getAll: async (): Promise<SupabaseEvnmt[]> => {
+    const { data, error } = await fromTable('evnmts')
+      .select(`
+        *,
+        sousModule:sous_modules(*, module:modules(*))
+      `)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  
+  getBySousModuleId: async (sousModuleId: string): Promise<SupabaseEvnmt[]> => {
+    const { data, error } = await fromTable('evnmts')
+      .select(`
+        *,
+        sousModule:sous_modules(*, module:modules(*))
+      `)
+      .eq('sous_module_id', sousModuleId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  
+  getById: async (id: string): Promise<SupabaseEvnmt> => {
+    const { data, error } = await fromTable('evnmts')
+      .select(`
+        *,
+        sousModule:sous_modules(*, module:modules(*))
+      `)
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  create: async (evnmt: { code_evnmt: string; libelle: string; ddeb: string; dfin?: string; bactif: boolean; sous_module_id: string }): Promise<SupabaseEvnmt> => {
+    const { data, error } = await fromTable('evnmts')
+      .insert(evnmt)
+      .select(`
+        *,
+        sousModule:sous_modules(*, module:modules(*))
+      `)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  update: async (id: string, evnmt: Partial<{ code_evnmt: string; libelle: string; ddeb: string; dfin: string; bactif: boolean; sous_module_id: string }>): Promise<SupabaseEvnmt> => {
+    const { data, error } = await fromTable('evnmts')
+      .update(evnmt)
+      .eq('id', id)
+      .select(`
+        *,
+        sousModule:sous_modules(*, module:modules(*))
+      `)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  
+  delete: async (id: string): Promise<void> => {
+    const { error } = await fromTable('evnmts')
+      .delete()
+      .eq('id', id);
     if (error) throw error;
   },
 };
