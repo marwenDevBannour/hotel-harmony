@@ -501,54 +501,545 @@ Configuration système et gestion de la hiérarchie des modules.
 - **Configuration Composants** : Éditeur de colonnes/champs
 - **Import/Export** : Sauvegarde de la configuration
 
-#### Hiérarchie de Configuration
+---
+
+## Hiérarchie Modules / Sous-Modules / Événements
+
+Cette section décrit en détail l'architecture de configuration dynamique du système. La hiérarchie à trois niveaux permet une organisation flexible et modulaire de l'application.
+
+### Vue d'ensemble de la Hiérarchie
+
 ```
-Module (ex: "Réservations")
-├── codeM: "RESERVATIONS"
-├── libelle: "Gestion des Réservations"
-├── ddeb/dfin: Période de validité
-│
-└── SousModule (ex: "Liste des réservations")
-    ├── codeS: "RESERVATION_LIST"
-    ├── libelle: "Liste des réservations"
-    │
-    └── Evnmt (ex: "Affichage tableau")
-        ├── codeEvnmt: "TABLE_VIEW"
-        ├── componentType: "table"
-        ├── bactif: true
-        └── config: ComponentConfig
+┌─────────────────────────────────────────────────────────────────┐
+│                          MODULE                                  │
+│  Niveau 1 : Domaine fonctionnel principal                       │
+│  (ex: Réservations, Chambres, Facturation)                      │
+├─────────────────────────────────────────────────────────────────┤
+│                       SOUS-MODULE                                │
+│  Niveau 2 : Fonctionnalité spécifique du module                 │
+│  (ex: Liste des réservations, Calendrier, Statistiques)         │
+├─────────────────────────────────────────────────────────────────┤
+│                        ÉVÉNEMENT                                 │
+│  Niveau 3 : Composant UI et sa configuration                    │
+│  (ex: Formulaire de création, Tableau de données, Dashboard)    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### Configuration des Composants
+---
+
+### 1. MODULE (Niveau 1)
+
+#### Description Détaillée
+
+Un **Module** représente un domaine fonctionnel principal de l'application. C'est le niveau le plus haut de la hiérarchie et correspond généralement à une section majeure du menu de navigation.
+
+#### Caractéristiques
+
+| Propriété | Type | Description | Exemple |
+|-----------|------|-------------|---------|
+| `id` | `string \| number` | Identifiant unique du module | `1`, `"mod-001"` |
+| `codeM` | `string` | Code unique d'identification (MAJUSCULES, underscore autorisé) | `"RESERVATIONS"`, `"CHAMBRES"` |
+| `libelle` | `string` | Nom affiché dans l'interface | `"Gestion des Réservations"` |
+| `ddeb` | `string` | Date de début de validité (ISO 8601) | `"2025-01-01"` |
+| `dfin` | `string \| null` | Date de fin de validité (null = indéfini) | `"2099-12-31"`, `null` |
+
+#### Interface TypeScript
+
+```typescript
+interface UnifiedModule {
+  id: string | number;
+  codeM: string;        // Code unique (ex: "RESERVATIONS")
+  libelle: string;      // Libellé affiché (ex: "Gestion des Réservations")
+  ddeb: string;         // Date début validité
+  dfin: string | null;  // Date fin validité (null = sans limite)
+}
+```
+
+#### Règles de Gestion
+
+1. **Unicité** : Le `codeM` doit être unique dans tout le système
+2. **Convention de nommage** : 
+   - `codeM` en MAJUSCULES, sans espaces (underscores autorisés)
+   - `libelle` en texte libre, clair et descriptif
+3. **Validité temporelle** : Un module n'est actif que si `ddeb <= today <= dfin`
+4. **Cascade** : La suppression d'un module entraîne la suppression de tous ses sous-modules et événements
+
+#### Exemples de Modules
+
+```yaml
+Module: Réservations
+  codeM: RESERVATIONS
+  libelle: Gestion des Réservations
+  ddeb: 2025-01-01
+  dfin: null
+  Description: Centralise toutes les fonctionnalités liées au cycle de vie 
+               des réservations (création, modification, annulation, check-in/out)
+
+Module: Chambres
+  codeM: CHAMBRES
+  libelle: Gestion des Chambres
+  ddeb: 2025-01-01
+  dfin: null
+  Description: Gère l'inventaire des chambres, leurs caractéristiques,
+               tarifs et états (disponible, occupée, maintenance)
+
+Module: Facturation
+  codeM: FACTURATION
+  libelle: Facturation et Paiements
+  ddeb: 2025-01-01
+  dfin: null
+  Description: Traite la création des factures, le suivi des paiements
+               et la génération des rapports financiers
+
+Module: Restaurant
+  codeM: RESTAURANT
+  libelle: Gestion du Restaurant
+  ddeb: 2025-01-01
+  dfin: null
+  Description: Gère les tables, le menu, les commandes et le room service
+```
+
+---
+
+### 2. SOUS-MODULE (Niveau 2)
+
+#### Description Détaillée
+
+Un **Sous-Module** représente une fonctionnalité spécifique au sein d'un module. Il permet de décomposer un domaine fonctionnel en sections plus précises et navigables.
+
+#### Caractéristiques
+
+| Propriété | Type | Description | Exemple |
+|-----------|------|-------------|---------|
+| `id` | `string \| number` | Identifiant unique | `10`, `"sm-001"` |
+| `codeS` | `string` | Code unique d'identification | `"RESERVATION_LIST"` |
+| `libelle` | `string` | Nom affiché | `"Liste des réservations"` |
+| `ddeb` | `string` | Date de début de validité | `"2025-01-01"` |
+| `dfin` | `string \| null` | Date de fin de validité | `null` |
+| `moduleId` | `string \| number` | Référence vers le module parent | `1` |
+| `module` | `UnifiedModule?` | Objet module parent (optionnel) | `{ id: 1, codeM: "RESERVATIONS", ... }` |
+
+#### Interface TypeScript
+
+```typescript
+interface UnifiedSousModule {
+  id: string | number;
+  codeS: string;              // Code unique (ex: "RESERVATION_LIST")
+  libelle: string;            // Libellé affiché
+  ddeb: string;               // Date début validité
+  dfin: string | null;        // Date fin validité
+  moduleId: string | number;  // ID du module parent
+  module?: UnifiedModule;     // Module parent (chargement optionnel)
+}
+```
+
+#### Règles de Gestion
+
+1. **Unicité** : Le `codeS` doit être unique au sein de tout le système
+2. **Dépendance** : Un sous-module doit obligatoirement être rattaché à un module
+3. **Héritage de validité** : La période de validité doit être incluse dans celle du module parent
+4. **Navigation** : Chaque sous-module génère une entrée dans le menu de navigation sous son module parent
+
+#### Exemples de Sous-Modules
+
+```yaml
+# Sous-modules du Module RESERVATIONS
+SousModule: Liste des réservations
+  codeS: RESERVATION_LIST
+  libelle: Liste des réservations
+  moduleId: RESERVATIONS
+  Description: Affiche un tableau paginé et filtrable de toutes les réservations
+               avec options de recherche, tri et export
+
+SousModule: Nouvelle réservation
+  codeS: RESERVATION_CREATE
+  libelle: Nouvelle réservation
+  moduleId: RESERVATIONS
+  Description: Formulaire de création d'une nouvelle réservation avec
+               sélection du client, de la chambre et des dates
+
+SousModule: Calendrier
+  codeS: RESERVATION_CALENDAR
+  libelle: Vue calendrier
+  moduleId: RESERVATIONS
+  Description: Visualisation des réservations sur un calendrier interactif
+               avec vue jour/semaine/mois
+
+# Sous-modules du Module CHAMBRES
+SousModule: Inventaire
+  codeS: ROOM_INVENTORY
+  libelle: Inventaire des chambres
+  moduleId: CHAMBRES
+  Description: Liste complète des chambres avec leurs caractéristiques,
+               tarifs et équipements
+
+SousModule: États des chambres
+  codeS: ROOM_STATUS
+  libelle: États des chambres
+  moduleId: CHAMBRES
+  Description: Vue en temps réel du statut de chaque chambre
+               (disponible, occupée, nettoyage, maintenance)
+
+# Sous-modules du Module FACTURATION
+SousModule: Factures
+  codeS: INVOICE_LIST
+  libelle: Liste des factures
+  moduleId: FACTURATION
+  Description: Gestion des factures avec suivi des paiements et relances
+
+SousModule: Paiements
+  codeS: PAYMENT_LIST
+  libelle: Historique des paiements
+  moduleId: FACTURATION
+  Description: Journal de tous les paiements reçus avec détails et références
+```
+
+---
+
+### 3. ÉVÉNEMENT (Niveau 3)
+
+#### Description Détaillée
+
+Un **Événement** (Evnmt) définit un composant UI spécifique et sa configuration. C'est le niveau le plus bas de la hiérarchie qui détermine comment les données sont affichées et manipulées.
+
+#### Caractéristiques
+
+| Propriété | Type | Description | Exemple |
+|-----------|------|-------------|---------|
+| `id` | `string \| number` | Identifiant unique | `100`, `"evt-001"` |
+| `codeEvnmt` | `string` | Code unique d'identification | `"TABLE_RESERVATIONS"` |
+| `libelle` | `string` | Nom affiché | `"Tableau des réservations"` |
+| `ddeb` | `string` | Date de début de validité | `"2025-01-01"` |
+| `dfin` | `string \| null` | Date de fin de validité | `null` |
+| `bactif` | `boolean` | Événement actuellement actif | `true` |
+| `sousModuleId` | `string \| number` | Référence vers le sous-module parent | `10` |
+| `componentType` | `EventComponentType` | Type de composant à rendre | `"table"`, `"form"` |
+| `config` | `ComponentConfig?` | Configuration du composant (JSONB) | `{ columns: [...] }` |
+
+#### Types de Composants Disponibles
+
+| Type | Description | Cas d'Usage | Icône |
+|------|-------------|-------------|-------|
+| `form` | Formulaire dynamique | Création/édition d'entités | 📝 |
+| `table` | Tableau de données | Affichage avec tri, filtre, pagination | 📊 |
+| `list` | Liste en cartes | Affichage visuel en grille | 📋 |
+| `dashboard` | Tableau de bord | KPIs et visualisations | 📈 |
+| `settings` | Paramètres | Configuration et préférences | ⚙️ |
+
+#### Interface TypeScript
+
+```typescript
+type EventComponentType = 'form' | 'table' | 'list' | 'dashboard' | 'settings';
+
+interface UnifiedEvnmt {
+  id: string | number;
+  codeEvnmt: string;              // Code unique
+  libelle: string;                // Libellé affiché
+  ddeb: string;                   // Date début validité
+  dfin: string | null;            // Date fin validité
+  bactif: boolean;                // Actif (seul 1 par sous-module)
+  sousModuleId: string | number;  // ID du sous-module parent
+  sousModule?: UnifiedSousModule; // Sous-module parent (optionnel)
+  componentType: EventComponentType; // Type de composant
+  config?: ComponentConfig;       // Configuration JSONB
+}
+```
+
+#### Règles de Gestion
+
+1. **Unicité active** : Un seul événement avec `bactif = true` par sous-module
+2. **Type obligatoire** : Le `componentType` doit être défini et valide
+3. **Configuration dynamique** : Le champ `config` stocke la configuration spécifique au type
+4. **Rendu conditionnel** : Seul l'événement actif est rendu dans l'interface
+
+#### Exemples d'Événements
+
+```yaml
+# Événements pour RESERVATION_LIST
+Evnmt: Tableau des réservations
+  codeEvnmt: TABLE_RESERVATIONS
+  libelle: Tableau des réservations
+  sousModuleId: RESERVATION_LIST
+  componentType: table
+  bactif: true
+  config:
+    columns:
+      - { key: "id", label: "#", type: "text", sortable: true }
+      - { key: "guestName", label: "Client", type: "text", sortable: true }
+      - { key: "roomNumber", label: "Chambre", type: "text" }
+      - { key: "checkIn", label: "Arrivée", type: "date", sortable: true }
+      - { key: "checkOut", label: "Départ", type: "date", sortable: true }
+      - { key: "status", label: "Statut", type: "badge" }
+    pageSize: 20
+    actions: { create: true, edit: true, delete: true, export: true }
+
+Evnmt: Liste visuelle (alternatif)
+  codeEvnmt: LIST_RESERVATIONS
+  libelle: Vue en cartes
+  sousModuleId: RESERVATION_LIST
+  componentType: list
+  bactif: false
+  config:
+    columns:
+      - { key: "guestName", label: "Client", type: "text" }
+      - { key: "dates", label: "Période", type: "text" }
+      - { key: "status", label: "Statut", type: "badge" }
+    pageSize: 12
+
+# Événement pour RESERVATION_CREATE
+Evnmt: Formulaire nouvelle réservation
+  codeEvnmt: FORM_NEW_RESERVATION
+  libelle: Créer une réservation
+  sousModuleId: RESERVATION_CREATE
+  componentType: form
+  bactif: true
+  config:
+    fields:
+      - { key: "guestId", label: "Client", type: "select", required: true }
+      - { key: "roomId", label: "Chambre", type: "select", required: true }
+      - { key: "checkIn", label: "Date d'arrivée", type: "date", required: true }
+      - { key: "checkOut", label: "Date de départ", type: "date", required: true }
+      - { key: "adults", label: "Adultes", type: "number", min: 1, max: 10 }
+      - { key: "children", label: "Enfants", type: "number", min: 0, max: 10 }
+      - { key: "notes", label: "Demandes spéciales", type: "textarea" }
+    actions: { create: true }
+
+# Événement Dashboard
+Evnmt: Dashboard général
+  codeEvnmt: DASHBOARD_OVERVIEW
+  libelle: Vue d'ensemble
+  sousModuleId: DASHBOARD_MAIN
+  componentType: dashboard
+  bactif: true
+  config:
+    title: "Tableau de bord"
+    description: "Vue synthétique de l'activité"
+```
+
+---
+
+### 4. CONFIGURATION DES COMPOSANTS (ComponentConfig)
+
+#### Description Détaillée
+
+La configuration (`ComponentConfig`) est un objet JSON stocké dans le champ `config` de chaque événement. Elle définit dynamiquement le comportement et l'apparence du composant rendu.
+
+#### Structure Complète
+
 ```typescript
 interface ComponentConfig {
-  // Pour les tables
+  // === MÉTADONNÉES ===
+  title?: string;           // Titre affiché
+  description?: string;     // Description/sous-titre
+  
+  // === COLONNES (Table & List) ===
   columns?: ColumnConfig[];
   
-  // Pour les formulaires
+  // === CHAMPS (Form) ===
   fields?: FieldConfig[];
   
-  // Métadonnées
-  title?: string;
-  description?: string;
-  pageSize?: number;
+  // === PAGINATION ===
+  pageSize?: number;        // Nombre d'items par page (défaut: 10)
   
-  // Actions autorisées
+  // === ACTIONS AUTORISÉES ===
   actions?: {
-    create?: boolean;
-    edit?: boolean;
-    delete?: boolean;
-    view?: boolean;
-    export?: boolean;
+    create?: boolean;       // Bouton "Ajouter"
+    edit?: boolean;         // Action "Modifier" par ligne
+    delete?: boolean;       // Action "Supprimer" par ligne
+    view?: boolean;         // Action "Voir" par ligne
+    export?: boolean;       // Bouton "Exporter"
   };
   
-  // Source de données
+  // === SOURCE DE DONNÉES ===
   dataSource?: {
     type: 'static' | 'supabase' | 'api';
-    table?: string;
-    endpoint?: string;
+    table?: string;         // Nom de la table Supabase
+    endpoint?: string;      // URL de l'API externe
   };
 }
+```
+
+#### Configuration des Colonnes (ColumnConfig)
+
+Pour les composants `table` et `list` :
+
+```typescript
+interface ColumnConfig {
+  key: string;              // Clé du champ dans les données
+  label: string;            // Libellé affiché
+  type: 'text' | 'number' | 'date' | 'badge' | 'boolean' | 'actions';
+  sortable?: boolean;       // Colonne triable
+  filterable?: boolean;     // Colonne filtrable
+  width?: string;           // Largeur CSS (ex: "150px", "20%")
+  
+  // Pour type "badge" : variantes de couleur par valeur
+  badgeVariants?: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'>;
+}
+```
+
+**Exemples de colonnes :**
+
+```json
+{
+  "columns": [
+    { "key": "id", "label": "#", "type": "text", "width": "80px" },
+    { "key": "name", "label": "Nom", "type": "text", "sortable": true },
+    { "key": "amount", "label": "Montant", "type": "number", "sortable": true },
+    { "key": "date", "label": "Date", "type": "date", "sortable": true },
+    { 
+      "key": "status", 
+      "label": "Statut", 
+      "type": "badge",
+      "badgeVariants": {
+        "confirmed": "default",
+        "pending": "secondary",
+        "cancelled": "destructive"
+      }
+    },
+    { "key": "active", "label": "Actif", "type": "boolean" }
+  ]
+}
+```
+
+#### Configuration des Champs (FieldConfig)
+
+Pour les composants `form` :
+
+```typescript
+interface FieldConfig {
+  key: string;              // Nom du champ
+  label: string;            // Libellé affiché
+  type: 'text' | 'number' | 'email' | 'date' | 'select' | 'textarea' | 'switch' | 'checkbox';
+  placeholder?: string;     // Texte indicatif
+  required?: boolean;       // Champ obligatoire
+  
+  // Pour type "select" : options disponibles
+  options?: { value: string; label: string }[];
+  
+  // Validation numérique
+  min?: number;
+  max?: number;
+  
+  // Validation texte
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;         // Expression régulière
+}
+```
+
+**Exemples de champs :**
+
+```json
+{
+  "fields": [
+    { 
+      "key": "email", 
+      "label": "Email", 
+      "type": "email", 
+      "required": true,
+      "placeholder": "exemple@hotel.com"
+    },
+    { 
+      "key": "phone", 
+      "label": "Téléphone", 
+      "type": "text",
+      "pattern": "^\\+?[0-9]{10,14}$"
+    },
+    { 
+      "key": "roomType", 
+      "label": "Type de chambre", 
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "single", "label": "Simple" },
+        { "value": "double", "label": "Double" },
+        { "value": "suite", "label": "Suite" }
+      ]
+    },
+    { 
+      "key": "nights", 
+      "label": "Nombre de nuits", 
+      "type": "number",
+      "min": 1,
+      "max": 365
+    },
+    { 
+      "key": "notes", 
+      "label": "Remarques", 
+      "type": "textarea",
+      "maxLength": 500
+    },
+    { 
+      "key": "vip", 
+      "label": "Client VIP", 
+      "type": "switch"
+    }
+  ]
+}
+```
+
+---
+
+### 5. DIAGRAMME DE LA HIÉRARCHIE
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              SYSTÈME PMS                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                      │
+           ┌──────────────────────────┼──────────────────────────┐
+           │                          │                          │
+           ▼                          ▼                          ▼
+    ┌────────────┐            ┌────────────┐            ┌────────────┐
+    │   MODULE   │            │   MODULE   │            │   MODULE   │
+    │ RESERVATIONS│           │  CHAMBRES  │            │FACTURATION │
+    └────────────┘            └────────────┘            └────────────┘
+           │                          │                          │
+     ┌─────┴─────┐              ┌─────┴─────┐              ┌─────┴─────┐
+     │           │              │           │              │           │
+     ▼           ▼              ▼           ▼              ▼           ▼
+┌─────────┐ ┌─────────┐   ┌─────────┐ ┌─────────┐   ┌─────────┐ ┌─────────┐
+│ SOUS-   │ │ SOUS-   │   │ SOUS-   │ │ SOUS-   │   │ SOUS-   │ │ SOUS-   │
+│ MODULE  │ │ MODULE  │   │ MODULE  │ │ MODULE  │   │ MODULE  │ │ MODULE  │
+│ Liste   │ │ Créer   │   │Inventaire│ │ Status  │   │Factures │ │Paiements│
+└─────────┘ └─────────┘   └─────────┘ └─────────┘   └─────────┘ └─────────┘
+     │           │              │           │              │           │
+     ▼           ▼              ▼           ▼              ▼           ▼
+┌─────────┐ ┌─────────┐   ┌─────────┐ ┌─────────┐   ┌─────────┐ ┌─────────┐
+│  EVNMT  │ │  EVNMT  │   │  EVNMT  │ │  EVNMT  │   │  EVNMT  │ │  EVNMT  │
+│  TABLE  │ │  FORM   │   │  TABLE  │ │DASHBOARD│   │  TABLE  │ │  LIST   │
+│ ✓ actif │ │ ✓ actif │   │ ✓ actif │ │ ✓ actif │   │ ✓ actif │ │ ✓ actif │
+└─────────┘ └─────────┘   └─────────┘ └─────────┘   └─────────┘ └─────────┘
+     │           │              │           │              │           │
+     ▼           ▼              ▼           ▼              ▼           ▼
+┌─────────┐ ┌─────────┐   ┌─────────┐ ┌─────────┐   ┌─────────┐ ┌─────────┐
+│ CONFIG  │ │ CONFIG  │   │ CONFIG  │ │ CONFIG  │   │ CONFIG  │ │ CONFIG  │
+│ columns │ │ fields  │   │ columns │ │ widgets │   │ columns │ │ columns │
+│ actions │ │ validat.│   │ pageSize│ │  kpis   │   │ actions │ │ pageSize│
+└─────────┘ └─────────┘   └─────────┘ └─────────┘   └─────────┘ └─────────┘
+```
+
+---
+
+### 6. FLUX DE RENDU DYNAMIQUE
+
+```
+1. L'utilisateur navigue vers /modules/RESERVATIONS/RESERVATION_LIST
+
+2. ModulePage.tsx charge les données :
+   ├── Trouve le module avec codeM = "RESERVATIONS"
+   ├── Trouve le sous-module avec codeS = "RESERVATION_LIST"
+   └── Trouve l'événement actif (bactif = true)
+
+3. Le composant dynamique est résolu :
+   ├── componentType = "table" → TableComponent
+   └── config = { columns: [...], pageSize: 20 }
+
+4. Le composant est rendu avec la configuration :
+   ├── TableComponent reçoit { sousModule, evnmt }
+   ├── Extrait evnmt.config.columns
+   ├── Génère les colonnes du tableau
+   └── Affiche les données avec les actions configurées
 ```
 
 ---
