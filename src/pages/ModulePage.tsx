@@ -125,13 +125,31 @@ export default function ModulePage() {
         {currentSousModule ? (
           // Afficher le composant correspondant au code du sous-module
           (() => {
-            const DynamicComponent = getComponentByCode(currentSousModule.codeS);
+            // Chercher un événement actif avec un componentType défini
+            const activeEvnmt = currentSousModule.evnmts?.find(e => e.bactif);
+            
+            // Déterminer quel composant charger:
+            // 1. Par componentType de l'événement actif
+            // 2. Par le code du sous-module
+            let DynamicComponent = null;
+            
+            if (activeEvnmt?.componentType) {
+              // Charger le composant basé sur le type de l'événement
+              const typeCode = `TYPE_${activeEvnmt.componentType.toUpperCase()}`;
+              DynamicComponent = getComponentByCode(typeCode);
+            }
+            
+            // Fallback sur le code du sous-module
+            if (!DynamicComponent) {
+              DynamicComponent = getComponentByCode(currentSousModule.codeS);
+            }
             
             if (DynamicComponent) {
               return (
                 <DynamicComponent 
                   sousModule={currentSousModule} 
-                  moduleCode={moduleCode || ''} 
+                  moduleCode={moduleCode || ''}
+                  evnmt={activeEvnmt}
                 />
               );
             }

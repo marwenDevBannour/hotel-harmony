@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { modulesApi, sousModulesApi, evnmtApi, Module, SousModule, Evnmt } from '@/services/api';
+import { ComponentConfig } from '@/types/componentConfig';
 
-export interface EvnmtItem extends Evnmt {}
+export interface EvnmtItem extends Omit<Evnmt, 'sousModule'> {
+  componentType?: 'form' | 'table' | 'list' | 'dashboard' | 'settings';
+  config?: ComponentConfig;
+  sousModule?: SousModule;
+}
 
 export interface SousModuleWithEvnmts extends SousModule {
   evnmts: EvnmtItem[];
@@ -39,10 +44,19 @@ export function useModules() {
     queryFn: evnmtApi.getAll,
   });
 
+  // Normaliser les événements pour inclure componentType et config
+  const normalizedEvnmts: EvnmtItem[] = evnmts.map((e: any) => ({
+    ...e,
+    // Gérer le format Supabase (snake_case) et Spring Boot (camelCase)
+    componentType: e.componentType || e.component_type || 'form',
+    config: e.config || {},
+    sousModuleId: e.sousModuleId || e.sous_module_id,
+  }));
+
   // Grouper les événements par sous-module
   const sousModulesWithEvnmts: SousModuleWithEvnmts[] = sousModules.map(sm => ({
     ...sm,
-    evnmts: evnmts.filter(e => {
+    evnmts: normalizedEvnmts.filter(e => {
       const evnmtSmId = e.sousModule?.id ?? (e as any).sousModuleId;
       return evnmtSmId === sm.id;
     }),
@@ -60,7 +74,7 @@ export function useModules() {
   return {
     modules: modulesWithSousModules,
     sousModules: sousModulesWithEvnmts,
-    evnmts,
+    evnmts: normalizedEvnmts,
     isLoading: modulesLoading || sousModulesLoading || evnmtsLoading,
     error: modulesError || sousModulesError || evnmtsError,
   };

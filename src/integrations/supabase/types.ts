@@ -19,6 +19,7 @@ export type Database = {
           bactif: boolean
           code_evnmt: string
           component_type: string
+          config: Json | null
           created_at: string
           ddeb: string
           dfin: string | null
@@ -31,6 +32,7 @@ export type Database = {
           bactif?: boolean
           code_evnmt: string
           component_type?: string
+          config?: Json | null
           created_at?: string
           ddeb?: string
           dfin?: string | null
@@ -43,6 +45,7 @@ export type Database = {
           bactif?: boolean
           code_evnmt?: string
           component_type?: string
+          config?: Json | null
           created_at?: string
           ddeb?: string
           dfin?: string | null
