@@ -266,8 +266,8 @@ export default function Settings() {
           </p>
         </div>
 
-        {/* Three-column cascading layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Stacked vertical layout */}
+        <div className="flex flex-col gap-6">
           {/* Modules Column */}
           <Card>
             <CardHeader className="pb-3">
