@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { roomsApi, Room, RoomInput } from '@/services/api';
+import { useCreateRoom, useUpdateRoom, Room } from '@/hooks/useRooms';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -53,7 +52,8 @@ interface RoomFormModalProps {
 }
 
 export function RoomFormModal({ open, onOpenChange, room }: RoomFormModalProps) {
-  const queryClient = useQueryClient();
+  const createMutation = useCreateRoom();
+  const updateMutation = useUpdateRoom();
   const isEditing = !!room;
 
   const form = useForm<RoomFormValues>({
@@ -84,35 +84,30 @@ export function RoomFormModal({ open, onOpenChange, room }: RoomFormModalProps) 
     }
   }, [room, form]);
 
-  const createMutation = useMutation({
-    mutationFn: (values: RoomFormValues) => roomsApi.create(values as any),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      toast.success('Chambre créée avec succès');
-      onOpenChange(false);
-    },
-    onError: () => {
-      toast.error('Erreur lors de la création');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (values: RoomFormValues) => roomsApi.update(room!.id, values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      toast.success('Chambre modifiée avec succès');
-      onOpenChange(false);
-    },
-    onError: () => {
-      toast.error('Erreur lors de la modification');
-    },
-  });
-
   const onSubmit = (values: RoomFormValues) => {
     if (isEditing) {
-      updateMutation.mutate(values);
+      updateMutation.mutate(
+        { id: room!.id, ...values },
+        {
+          onSuccess: () => {
+            toast.success('Chambre modifiée avec succès');
+            onOpenChange(false);
+          },
+          onError: () => {
+            toast.error('Erreur lors de la modification');
+          },
+        }
+      );
     } else {
-      createMutation.mutate(values);
+      createMutation.mutate(values, {
+        onSuccess: () => {
+          toast.success('Chambre créée avec succès');
+          onOpenChange(false);
+        },
+        onError: () => {
+          toast.error('Erreur lors de la création');
+        },
+      });
     }
   };
 

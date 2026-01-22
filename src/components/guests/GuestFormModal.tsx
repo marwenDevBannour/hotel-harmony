@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { guestsApi, Guest, GuestInput } from '@/services/api';
+import { useCreateGuest, useUpdateGuest, Guest } from '@/hooks/useGuests';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -37,7 +36,8 @@ interface GuestFormModalProps {
 }
 
 export function GuestFormModal({ open, onOpenChange, guest }: GuestFormModalProps) {
-  const queryClient = useQueryClient();
+  const createMutation = useCreateGuest();
+  const updateMutation = useUpdateGuest();
   const isEditing = !!guest;
 
   const form = useForm<GuestFormValues>({
@@ -65,35 +65,30 @@ export function GuestFormModal({ open, onOpenChange, guest }: GuestFormModalProp
     }
   }, [guest, form]);
 
-  const createMutation = useMutation({
-    mutationFn: (values: GuestFormValues) => guestsApi.create(values as any),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guests'] });
-      toast.success('Client créé avec succès');
-      onOpenChange(false);
-    },
-    onError: () => {
-      toast.error('Erreur lors de la création');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (values: GuestFormValues) => guestsApi.update(guest!.id, values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guests'] });
-      toast.success('Client modifié avec succès');
-      onOpenChange(false);
-    },
-    onError: () => {
-      toast.error('Erreur lors de la modification');
-    },
-  });
-
   const onSubmit = (values: GuestFormValues) => {
     if (isEditing) {
-      updateMutation.mutate(values);
+      updateMutation.mutate(
+        { id: guest!.id, ...values },
+        {
+          onSuccess: () => {
+            toast.success('Client modifié avec succès');
+            onOpenChange(false);
+          },
+          onError: () => {
+            toast.error('Erreur lors de la modification');
+          },
+        }
+      );
     } else {
-      createMutation.mutate(values);
+      createMutation.mutate(values, {
+        onSuccess: () => {
+          toast.success('Client créé avec succès');
+          onOpenChange(false);
+        },
+        onError: () => {
+          toast.error('Erreur lors de la création');
+        },
+      });
     }
   };
 

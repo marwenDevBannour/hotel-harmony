@@ -1,4 +1,4 @@
-import { Room } from '@/services/api';
+import type { Room } from '@/hooks/useRooms';
 import { cn } from '@/lib/utils';
 import { BedDouble } from 'lucide-react';
 

@@ -1,4 +1,4 @@
-import { Reservation } from '@/services/api';
+import type { Reservation } from '@/hooks/useReservations';
 import { cn } from '@/lib/utils';
 import { ExternalLink, Calendar } from 'lucide-react';
 

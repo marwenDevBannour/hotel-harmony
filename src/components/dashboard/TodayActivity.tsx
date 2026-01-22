@@ -1,6 +1,6 @@
 import { LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Reservation } from '@/services/api';
+import type { Reservation } from '@/hooks/useReservations';
 
 interface TodayActivityProps {
   arrivals: Reservation[];
