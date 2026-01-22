@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Evnmt, EvnmtInput, SousModule } from '@/services/api';
+import { Evnmt, SousModule } from '@/hooks/useModulesCrud';
+import { EvnmtInput } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,13 +22,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 
 const evnmtSchema = z.object({
@@ -96,7 +90,7 @@ export function EvnmtFormModal({
       ddeb: data.ddeb,
       dfin: data.dfin,
       bactif: data.bactif,
-      sousModuleId: selectedSousModule.id,
+      sousModuleId: selectedSousModule.id as number, // Type cast for API compatibility
     };
     onSubmit(input);
     onOpenChange(false);

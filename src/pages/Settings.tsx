@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Folder, FolderOpen, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
-import { useModulesCrud } from '@/hooks/useModulesCrud';
-import { Module, SousModule, Evnmt } from '@/services/api';
+import { useModulesCrud, Module, SousModule, Evnmt } from '@/hooks/useModulesCrud';
 import { ModuleFormModal } from '@/components/settings/ModuleFormModal';
 import { SousModuleFormModal } from '@/components/settings/SousModuleFormModal';
 import { EvnmtFormModal } from '@/components/settings/EvnmtFormModal';
@@ -63,9 +62,9 @@ export default function Settings() {
     isUpdatingEvnmt,
   } = useModulesCrud();
 
-  // Selection state for cascading
-  const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
-  const [selectedSousModuleId, setSelectedSousModuleId] = useState<number | null>(null);
+  // Selection state for cascading (string | number to support both backends)
+  const [selectedModuleId, setSelectedModuleId] = useState<string | number | null>(null);
+  const [selectedSousModuleId, setSelectedSousModuleId] = useState<string | number | null>(null);
 
   // Search state
   const [moduleSearch, setModuleSearch] = useState('');
@@ -150,14 +149,14 @@ export default function Settings() {
   const totalEvnmtPages = Math.ceil(filteredEvnmts.length / ITEMS_PER_PAGE);
 
   // Handlers
-  const handleSelectModule = (moduleId: number) => {
+  const handleSelectModule = (moduleId: string | number) => {
     setSelectedModuleId(moduleId === selectedModuleId ? null : moduleId);
     setSelectedSousModuleId(null);
     setSousModulePage(1);
     setEvnmtPage(1);
   };
 
-  const handleSelectSousModule = (sousModuleId: number) => {
+  const handleSelectSousModule = (sousModuleId: string | number) => {
     setSelectedSousModuleId(sousModuleId === selectedSousModuleId ? null : sousModuleId);
     setEvnmtPage(1);
   };
