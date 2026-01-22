@@ -40,6 +40,8 @@ export interface SupabaseSousModule {
   updated_at: string;
 }
 
+export type ComponentType = 'form' | 'table' | 'list' | 'dashboard' | 'settings';
+
 export interface SupabaseEvnmt {
   id: string;
   code_evnmt: string;
@@ -48,6 +50,7 @@ export interface SupabaseEvnmt {
   dfin: string | null;
   bactif: boolean;
   sous_module_id: string;
+  component_type: ComponentType;
   sousModule?: SupabaseSousModule;
   created_at: string;
   updated_at: string;
@@ -502,9 +505,9 @@ export const supabaseEvnmtsApi = {
     return data;
   },
   
-  create: async (evnmt: { code_evnmt: string; libelle: string; ddeb: string; dfin?: string; bactif: boolean; sous_module_id: string }): Promise<SupabaseEvnmt> => {
+  create: async (evnmt: { code_evnmt: string; libelle: string; ddeb: string; dfin?: string; bactif: boolean; sous_module_id: string; component_type?: ComponentType }): Promise<SupabaseEvnmt> => {
     const { data, error } = await fromTable('evnmts')
-      .insert(evnmt)
+      .insert({ ...evnmt, component_type: evnmt.component_type || 'form' })
       .select(`
         *,
         sousModule:sous_modules(*, module:modules(*))
@@ -514,7 +517,7 @@ export const supabaseEvnmtsApi = {
     return data;
   },
   
-  update: async (id: string, evnmt: Partial<{ code_evnmt: string; libelle: string; ddeb: string; dfin: string; bactif: boolean; sous_module_id: string }>): Promise<SupabaseEvnmt> => {
+  update: async (id: string, evnmt: Partial<{ code_evnmt: string; libelle: string; ddeb: string; dfin: string; bactif: boolean; sous_module_id: string; component_type: ComponentType }>): Promise<SupabaseEvnmt> => {
     const { data, error } = await fromTable('evnmts')
       .update(evnmt)
       .eq('id', id)

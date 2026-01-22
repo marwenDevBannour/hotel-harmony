@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           bactif: boolean
           code_evnmt: string
+          component_type: string
           created_at: string
           ddeb: string
           dfin: string | null
@@ -29,6 +30,7 @@ export type Database = {
         Insert: {
           bactif?: boolean
           code_evnmt: string
+          component_type?: string
           created_at?: string
           ddeb?: string
           dfin?: string | null
@@ -40,6 +42,7 @@ export type Database = {
         Update: {
           bactif?: boolean
           code_evnmt?: string
+          component_type?: string
           created_at?: string
           ddeb?: string
           dfin?: string | null

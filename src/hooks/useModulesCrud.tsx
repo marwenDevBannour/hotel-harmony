@@ -215,7 +215,7 @@ export function useModulesCrud() {
   // Evnmt mutations
   // =====================
   const createEvnmt = useMutation({
-    mutationFn: async (data: EvnmtInput): Promise<Evnmt> => {
+    mutationFn: async (data: EvnmtInput & { componentType?: string }): Promise<Evnmt> => {
       if (isProduction()) {
         const result = await supabaseEvnmtsApi.create({
           code_evnmt: data.codeEvnmt,
@@ -224,6 +224,7 @@ export function useModulesCrud() {
           dfin: data.dfin,
           bactif: data.bactif,
           sous_module_id: String(data.sousModuleId),
+          component_type: (data.componentType || 'form') as any,
         });
         return normalizeEvnmt(result);
       }
@@ -240,7 +241,7 @@ export function useModulesCrud() {
   });
 
   const updateEvnmt = useMutation({
-    mutationFn: async ({ id, data }: { id: string | number; data: Partial<EvnmtInput> }): Promise<Evnmt> => {
+    mutationFn: async ({ id, data }: { id: string | number; data: Partial<EvnmtInput & { componentType?: string }> }): Promise<Evnmt> => {
       if (isProduction()) {
         const updateData: any = {};
         if (data.codeEvnmt) updateData.code_evnmt = data.codeEvnmt;
@@ -249,6 +250,7 @@ export function useModulesCrud() {
         if (data.dfin !== undefined) updateData.dfin = data.dfin;
         if (data.bactif !== undefined) updateData.bactif = data.bactif;
         if (data.sousModuleId) updateData.sous_module_id = String(data.sousModuleId);
+        if (data.componentType) updateData.component_type = data.componentType;
         
         const result = await supabaseEvnmtsApi.update(String(id), updateData);
         return normalizeEvnmt(result);
