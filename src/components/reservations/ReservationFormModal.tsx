@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { reservationsApi, Reservation, ReservationInput } from '@/services/api';
+import { useCreateReservation, useUpdateReservation, Reservation } from '@/hooks/useReservations';
 import { useRooms } from '@/hooks/useRooms';
 import { useGuests } from '@/hooks/useGuests';
 import { toast } from 'sonner';
@@ -32,8 +31,8 @@ import {
 } from '@/components/ui/select';
 
 const reservationSchema = z.object({
-  guestId: z.coerce.number().min(1, 'Client requis'),
-  roomId: z.coerce.number().min(1, 'Chambre requise'),
+  guestId: z.string().min(1, 'Client requis'),
+  roomId: z.string().min(1, 'Chambre requise'),
   checkInDate: z.string().min(1, "Date d'arrivée requise"),
   checkOutDate: z.string().min(1, 'Date de départ requise'),
 });
@@ -47,7 +46,8 @@ interface ReservationFormModalProps {
 }
 
 export function ReservationFormModal({ open, onOpenChange, reservation }: ReservationFormModalProps) {
-  const queryClient = useQueryClient();
+  const createMutation = useCreateReservation();
+  const updateMutation = useUpdateReservation();
   const { data: rooms } = useRooms();
   const { data: guests } = useGuests();
   const isEditing = !!reservation;
@@ -55,8 +55,8 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
   const form = useForm<ReservationFormValues>({
     resolver: zodResolver(reservationSchema),
     defaultValues: {
-      guestId: 0,
-      roomId: 0,
+      guestId: '',
+      roomId: '',
       checkInDate: '',
       checkOutDate: '',
     },
@@ -65,51 +65,52 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
   useEffect(() => {
     if (reservation) {
       form.reset({
-        guestId: reservation.guest?.id || 0,
-        roomId: reservation.room?.id || 0,
-        checkInDate: reservation.checkInDate,
-        checkOutDate: reservation.checkOutDate,
+        guestId: String(reservation.guest?.id || reservation.guestId || ''),
+        roomId: String(reservation.room?.id || reservation.roomId || ''),
+        checkInDate: reservation.checkInDate.split('T')[0],
+        checkOutDate: reservation.checkOutDate.split('T')[0],
       });
     } else {
       form.reset({
-        guestId: 0,
-        roomId: 0,
+        guestId: '',
+        roomId: '',
         checkInDate: '',
         checkOutDate: '',
       });
     }
   }, [reservation, form]);
 
-  const createMutation = useMutation({
-    mutationFn: (values: ReservationFormValues) => reservationsApi.create(values as any),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reservations'] });
-      toast.success('Réservation créée avec succès');
-      onOpenChange(false);
-    },
-    onError: () => {
-      toast.error('Erreur lors de la création');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (values: ReservationFormValues) => 
-      reservationsApi.update(reservation!.id, values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reservations'] });
-      toast.success('Réservation modifiée avec succès');
-      onOpenChange(false);
-    },
-    onError: () => {
-      toast.error('Erreur lors de la modification');
-    },
-  });
-
   const onSubmit = (values: ReservationFormValues) => {
+    const data = {
+      guestId: values.guestId,
+      roomId: values.roomId,
+      checkInDate: values.checkInDate,
+      checkOutDate: values.checkOutDate,
+    };
+
     if (isEditing) {
-      updateMutation.mutate(values);
+      updateMutation.mutate(
+        { id: reservation!.id, ...data },
+        {
+          onSuccess: () => {
+            toast.success('Réservation modifiée avec succès');
+            onOpenChange(false);
+          },
+          onError: () => {
+            toast.error('Erreur lors de la modification');
+          },
+        }
+      );
     } else {
-      createMutation.mutate(values);
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          toast.success('Réservation créée avec succès');
+          onOpenChange(false);
+        },
+        onError: () => {
+          toast.error('Erreur lors de la création');
+        },
+      });
     }
   };
 
@@ -132,7 +133,7 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Client</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || '')}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un client..." />
@@ -157,7 +158,7 @@ export function ReservationFormModal({ open, onOpenChange, reservation }: Reserv
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Chambre</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || '')}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une chambre..." />
