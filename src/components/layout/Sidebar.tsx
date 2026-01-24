@@ -14,11 +14,12 @@ import {
   ChevronRight,
   Hotel,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Circle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { useModules } from '@/hooks/useModules';
+import { useModules, SousModuleWithEvnmts } from '@/hooks/useModules';
 import { getIconByCode } from '@/lib/iconMapping';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +54,7 @@ const bottomNavItems: NavItem[] = [
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [openModules, setOpenModules] = useState<Record<number, boolean>>({});
+  const [openSousModules, setOpenSousModules] = useState<Record<number, boolean>>({});
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -67,6 +69,13 @@ const Sidebar = () => {
     setOpenModules(prev => ({
       ...prev,
       [moduleId]: !prev[moduleId]
+    }));
+  };
+
+  const toggleSousModule = (sousModuleId: number) => {
+    setOpenSousModules(prev => ({
+      ...prev,
+      [sousModuleId]: !prev[sousModuleId]
     }));
   };
 
@@ -192,6 +201,44 @@ const Sidebar = () => {
                     <CollapsibleContent className="pl-4">
                       {module.sousModules.map((sousModule) => {
                         const SousModuleIcon = getIconByCode(sousModule.codeS);
+                        const hasEvnmts = sousModule.evnmts && sousModule.evnmts.length > 1;
+                        const isSousModuleOpen = openSousModules[sousModule.id] || false;
+
+                        // Si le sous-module a plusieurs événements, afficher comme collapsible
+                        if (hasEvnmts) {
+                          return (
+                            <Collapsible
+                              key={sousModule.id}
+                              open={isSousModuleOpen}
+                              onOpenChange={() => toggleSousModule(sousModule.id)}
+                            >
+                              <CollapsibleTrigger className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200">
+                                <SousModuleIcon className="h-4 w-4 shrink-0" />
+                                <span className="flex-1 text-left truncate">{sousModule.libelle}</span>
+                                <ChevronDown className={cn(
+                                  "h-3 w-3 shrink-0 transition-transform duration-200",
+                                  isSousModuleOpen && "rotate-180"
+                                )} />
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="pl-4">
+                                {sousModule.evnmts
+                                  .filter(evnmt => evnmt.bactif)
+                                  .map((evnmt) => (
+                                    <Link
+                                      key={evnmt.id}
+                                      to={`/module/${module.codeM.toLowerCase()}/${sousModule.codeS.toLowerCase()}?evnmt=${evnmt.codeEvnmt?.toLowerCase()}`}
+                                      className="group flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
+                                    >
+                                      <Circle className="h-2 w-2 shrink-0 fill-current" />
+                                      <span className="truncate">{evnmt.libelle}</span>
+                                    </Link>
+                                  ))}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        }
+
+                        // Sinon, afficher comme lien simple
                         return (
                           <Link
                             key={sousModule.id}
