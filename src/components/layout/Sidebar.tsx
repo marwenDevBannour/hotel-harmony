@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -53,10 +53,27 @@ const bottomNavItems: NavItem[] = [
   { icon: Settings, label: 'Paramètres', href: '/settings' },
 ];
 
+const STORAGE_KEYS = {
+  OPEN_MODULES: 'sidebar_open_modules',
+  OPEN_SOUS_MODULES: 'sidebar_open_sous_modules',
+  COLLAPSED: 'sidebar_collapsed',
+};
+
 const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [openModules, setOpenModules] = useState<Record<number, boolean>>({});
-  const [openSousModules, setOpenSousModules] = useState<Record<number, boolean>>({});
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.COLLAPSED);
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [openModules, setOpenModules] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.OPEN_MODULES);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [openSousModules, setOpenSousModules] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.OPEN_SOUS_MODULES);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [hasAutoExpanded, setHasAutoExpanded] = useState(false);
+  
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -65,6 +82,57 @@ const Sidebar = () => {
 
   // Get current evnmt from URL
   const currentEvnmt = searchParams.get('evnmt');
+
+  // Persist collapsed state
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.COLLAPSED, JSON.stringify(collapsed));
+  }, [collapsed]);
+
+  // Persist open modules state
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.OPEN_MODULES, JSON.stringify(openModules));
+  }, [openModules]);
+
+  // Persist open sous-modules state
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.OPEN_SOUS_MODULES, JSON.stringify(openSousModules));
+  }, [openSousModules]);
+
+  // Auto-expand parent menus based on current URL
+  useEffect(() => {
+    if (modulesLoading || modules.length === 0 || hasAutoExpanded) return;
+
+    const pathMatch = location.pathname.match(/^\/module\/([^/]+)\/([^/]+)/);
+    if (!pathMatch) return;
+
+    const [, moduleCode, sousModuleCode] = pathMatch;
+
+    // Find matching module and sous-module
+    const matchingModule = modules.find(
+      m => m.codeM.toLowerCase() === moduleCode.toLowerCase()
+    );
+
+    if (matchingModule) {
+      // Expand the module
+      setOpenModules(prev => ({ ...prev, [matchingModule.id]: true }));
+
+      // Find and expand the sous-module if it has multiple events
+      const matchingSousModule = matchingModule.sousModules?.find(
+        sm => sm.codeS.toLowerCase() === sousModuleCode.toLowerCase()
+      );
+
+      if (matchingSousModule && matchingSousModule.evnmts?.length > 1) {
+        setOpenSousModules(prev => ({ ...prev, [matchingSousModule.id]: true }));
+      }
+    }
+
+    setHasAutoExpanded(true);
+  }, [location.pathname, modules, modulesLoading, hasAutoExpanded]);
+
+  // Reset auto-expand flag when navigating to a new module path
+  useEffect(() => {
+    setHasAutoExpanded(false);
+  }, [location.pathname]);
 
   // Helper to check if an event is currently selected
   const isEvnmtActive = (moduleCode: string, sousModuleCode: string, evnmtCode: string) => {
@@ -83,14 +151,14 @@ const Sidebar = () => {
     navigate('/auth');
   };
 
-  const toggleModule = (moduleId: number) => {
+  const toggleModule = (moduleId: string | number) => {
     setOpenModules(prev => ({
       ...prev,
       [moduleId]: !prev[moduleId]
     }));
   };
 
-  const toggleSousModule = (sousModuleId: number) => {
+  const toggleSousModule = (sousModuleId: string | number) => {
     setOpenSousModules(prev => ({
       ...prev,
       [sousModuleId]: !prev[sousModuleId]
