@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   BedDouble, 
@@ -15,13 +15,15 @@ import {
   Hotel,
   LogOut,
   ChevronDown,
-  Circle
+  Circle,
+  Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useModules, SousModuleWithEvnmts } from '@/hooks/useModules';
 import { getIconByCode } from '@/lib/iconMapping';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Collapsible,
   CollapsibleContent,
@@ -56,9 +58,25 @@ const Sidebar = () => {
   const [openModules, setOpenModules] = useState<Record<number, boolean>>({});
   const [openSousModules, setOpenSousModules] = useState<Record<number, boolean>>({});
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { modules, isLoading: modulesLoading } = useModules();
+
+  // Get current evnmt from URL
+  const currentEvnmt = searchParams.get('evnmt');
+
+  // Helper to check if an event is currently selected
+  const isEvnmtActive = (moduleCode: string, sousModuleCode: string, evnmtCode: string) => {
+    const pathMatch = location.pathname === `/module/${moduleCode.toLowerCase()}/${sousModuleCode.toLowerCase()}`;
+    const evnmtMatch = currentEvnmt?.toLowerCase() === evnmtCode.toLowerCase();
+    return pathMatch && evnmtMatch;
+  };
+
+  // Count active events in a sous-module
+  const getActiveEvnmtCount = (sousModule: SousModuleWithEvnmts) => {
+    return sousModule.evnmts?.filter(e => e.bactif).length || 0;
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -204,6 +222,8 @@ const Sidebar = () => {
                         const hasEvnmts = sousModule.evnmts && sousModule.evnmts.length > 1;
                         const isSousModuleOpen = openSousModules[sousModule.id] || false;
 
+                        const activeEvnmtCount = getActiveEvnmtCount(sousModule);
+
                         // Si le sous-module a plusieurs événements, afficher comme collapsible
                         if (hasEvnmts) {
                           return (
@@ -215,6 +235,14 @@ const Sidebar = () => {
                               <CollapsibleTrigger className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200">
                                 <SousModuleIcon className="h-4 w-4 shrink-0" />
                                 <span className="flex-1 text-left truncate">{sousModule.libelle}</span>
+                                {activeEvnmtCount > 0 && (
+                                  <Badge 
+                                    variant="secondary" 
+                                    className="h-5 min-w-5 px-1.5 text-xs font-semibold bg-sidebar-primary/20 text-sidebar-primary hover:bg-sidebar-primary/30"
+                                  >
+                                    {activeEvnmtCount}
+                                  </Badge>
+                                )}
                                 <ChevronDown className={cn(
                                   "h-3 w-3 shrink-0 transition-transform duration-200",
                                   isSousModuleOpen && "rotate-180"
@@ -223,16 +251,28 @@ const Sidebar = () => {
                               <CollapsibleContent className="pl-4">
                                 {sousModule.evnmts
                                   .filter(evnmt => evnmt.bactif)
-                                  .map((evnmt) => (
-                                    <Link
-                                      key={evnmt.id}
-                                      to={`/module/${module.codeM.toLowerCase()}/${sousModule.codeS.toLowerCase()}?evnmt=${evnmt.codeEvnmt?.toLowerCase()}`}
-                                      className="group flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
-                                    >
-                                      <Circle className="h-2 w-2 shrink-0 fill-current" />
-                                      <span className="truncate">{evnmt.libelle}</span>
-                                    </Link>
-                                  ))}
+                                  .map((evnmt) => {
+                                    const isActive = isEvnmtActive(module.codeM, sousModule.codeS, evnmt.codeEvnmt || '');
+                                    return (
+                                      <Link
+                                        key={evnmt.id}
+                                        to={`/module/${module.codeM.toLowerCase()}/${sousModule.codeS.toLowerCase()}?evnmt=${evnmt.codeEvnmt?.toLowerCase()}`}
+                                        className={cn(
+                                          "group flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs transition-all duration-200",
+                                          isActive 
+                                            ? "bg-sidebar-primary/10 text-sidebar-primary font-medium" 
+                                            : "text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                                        )}
+                                      >
+                                        {isActive ? (
+                                          <Check className="h-3 w-3 shrink-0 text-sidebar-primary" />
+                                        ) : (
+                                          <Circle className="h-2 w-2 shrink-0 fill-current" />
+                                        )}
+                                        <span className="truncate">{evnmt.libelle}</span>
+                                      </Link>
+                                    );
+                                  })}
                               </CollapsibleContent>
                             </Collapsible>
                           );
