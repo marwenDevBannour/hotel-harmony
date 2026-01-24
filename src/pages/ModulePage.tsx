@@ -1,7 +1,7 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Folder, AlertCircle, Component } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
-import { useModules } from '@/hooks/useModules';
+import { useModules, EvnmtItem } from '@/hooks/useModules';
 import { getIconByCode } from '@/lib/iconMapping';
 import { getComponentByCode, hasComponent } from '@/lib/componentRegistry';
 import '@/lib/initComponentRegistry'; // Initialise le registre
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,6 +21,8 @@ import {
 
 export default function ModulePage() {
   const { moduleCode, sousModuleCode } = useParams<{ moduleCode: string; sousModuleCode?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const evnmtCode = searchParams.get('evnmt');
   const { modules, isLoading } = useModules();
 
   // Trouver le module correspondant
@@ -125,36 +128,115 @@ export default function ModulePage() {
         {currentSousModule ? (
           // Afficher le composant correspondant au code du sous-module
           (() => {
-            // Chercher un événement actif avec un componentType défini
-            const activeEvnmt = currentSousModule.evnmts?.find(e => e.bactif);
+            // Récupérer les événements actifs
+            const activeEvnmts = currentSousModule.evnmts?.filter(e => e.bactif) || [];
             
-            // Déterminer quel composant charger:
-            // 1. Par componentType de l'événement actif
-            // 2. Par le code du sous-module
-            let DynamicComponent = null;
-            
-            if (activeEvnmt?.componentType) {
-              // Charger le composant basé sur le type de l'événement
-              const typeCode = `TYPE_${activeEvnmt.componentType.toUpperCase()}`;
-              DynamicComponent = getComponentByCode(typeCode);
+            // Trouver l'événement sélectionné via l'URL ou prendre le premier actif
+            let selectedEvnmt: EvnmtItem | undefined;
+            if (evnmtCode) {
+              selectedEvnmt = activeEvnmts.find(
+                e => e.codeEvnmt?.toLowerCase() === evnmtCode.toLowerCase()
+              );
             }
-            
-            // Fallback sur le code du sous-module
-            if (!DynamicComponent) {
-              DynamicComponent = getComponentByCode(currentSousModule.codeS);
+            if (!selectedEvnmt && activeEvnmts.length > 0) {
+              selectedEvnmt = activeEvnmts[0];
             }
-            
-            if (DynamicComponent) {
+
+            // Fonction pour changer d'événement
+            const handleEvnmtChange = (newEvnmtCode: string) => {
+              setSearchParams({ evnmt: newEvnmtCode.toLowerCase() });
+            };
+
+            // Fonction pour rendre un composant d'événement
+            const renderEvnmtComponent = (evnmt: EvnmtItem) => {
+              let DynamicComponent = null;
+              
+              if (evnmt.componentType) {
+                const typeCode = `TYPE_${evnmt.componentType.toUpperCase()}`;
+                DynamicComponent = getComponentByCode(typeCode);
+              }
+              
+              if (!DynamicComponent) {
+                DynamicComponent = getComponentByCode(currentSousModule.codeS);
+              }
+              
+              if (DynamicComponent) {
+                return (
+                  <DynamicComponent 
+                    sousModule={currentSousModule} 
+                    moduleCode={moduleCode || ''}
+                    evnmt={evnmt}
+                  />
+                );
+              }
+
+              // Fallback si aucun composant n'est enregistré
               return (
-                <DynamicComponent 
-                  sousModule={currentSousModule} 
-                  moduleCode={moduleCode || ''}
-                  evnmt={activeEvnmt}
-                />
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                        <SousModuleIcon className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <CardTitle>{evnmt.libelle}</CardTitle>
+                        <CardDescription>
+                          Code: {evnmt.codeEvnmt}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline" className="gap-1">
+                        <Component className="h-3 w-3" />
+                        Composant non défini
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                      <SousModuleIcon className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                      <p className="text-lg font-medium">Composant non configuré</p>
+                      <p className="text-sm mt-2">
+                        Aucun composant n'est enregistré pour le type "{evnmt.componentType || 'non défini'}".
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            };
+
+            // Si plusieurs événements actifs, afficher des onglets
+            if (activeEvnmts.length > 1) {
+              return (
+                <Tabs 
+                  value={selectedEvnmt?.codeEvnmt?.toLowerCase() || activeEvnmts[0]?.codeEvnmt?.toLowerCase()} 
+                  onValueChange={handleEvnmtChange}
+                  className="space-y-4"
+                >
+                  <TabsList className="flex-wrap h-auto gap-1">
+                    {activeEvnmts.map((evnmt) => (
+                      <TabsTrigger 
+                        key={evnmt.id} 
+                        value={evnmt.codeEvnmt?.toLowerCase() || ''}
+                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      >
+                        {evnmt.libelle}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                  {activeEvnmts.map((evnmt) => (
+                    <TabsContent key={evnmt.id} value={evnmt.codeEvnmt?.toLowerCase() || ''}>
+                      {renderEvnmtComponent(evnmt)}
+                    </TabsContent>
+                  ))}
+                </Tabs>
               );
             }
 
-            // Fallback si aucun composant n'est enregistré
+            // Si un seul événement ou aucun, afficher directement
+            if (selectedEvnmt) {
+              return renderEvnmtComponent(selectedEvnmt);
+            }
+
+            // Fallback si aucun événement
             return (
               <Card>
                 <CardHeader>
@@ -168,21 +250,14 @@ export default function ModulePage() {
                         Code: {currentSousModule.codeS}
                       </CardDescription>
                     </div>
-                    <Badge variant="outline" className="gap-1">
-                      <Component className="h-3 w-3" />
-                      Composant non défini
-                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
                     <SousModuleIcon className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                    <p className="text-lg font-medium">Composant non configuré</p>
+                    <p className="text-lg font-medium">Aucun événement actif</p>
                     <p className="text-sm mt-2">
-                      Aucun composant n'est enregistré pour le code "{currentSousModule.codeS}".
-                    </p>
-                    <p className="text-xs mt-4">
-                      Ajoutez un mapping dans <code className="bg-muted px-1 py-0.5 rounded">src/lib/initComponentRegistry.ts</code>
+                      Ce sous-module n'a pas d'événement actif configuré.
                     </p>
                   </div>
                 </CardContent>
