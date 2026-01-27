@@ -11,7 +11,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, GripVertical, Settings2 } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Settings2, Type, Hash, Mail, Calendar, List, AlignLeft, ToggleLeft, CheckSquare, Sparkles } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { ColumnConfig, FieldConfig, ComponentConfig } from '@/types/componentConfig';
 import { FieldOptionsModal } from './FieldOptionsModal';
 
@@ -30,15 +38,26 @@ const columnTypes = [
 ];
 
 const fieldTypes = [
-  { value: 'text', label: 'Texte' },
-  { value: 'number', label: 'Nombre' },
-  { value: 'email', label: 'Email' },
-  { value: 'date', label: 'Date' },
-  { value: 'select', label: 'Liste déroulante' },
-  { value: 'textarea', label: 'Zone de texte' },
-  { value: 'switch', label: 'Interrupteur' },
-  { value: 'checkbox', label: 'Case à cocher' },
+  { value: 'text', label: 'Texte', icon: 'Type', description: 'Champ texte simple' },
+  { value: 'number', label: 'Nombre', icon: 'Hash', description: 'Valeur numérique' },
+  { value: 'email', label: 'Email', icon: 'Mail', description: 'Adresse email' },
+  { value: 'date', label: 'Date', icon: 'Calendar', description: 'Sélecteur de date' },
+  { value: 'select', label: 'Liste déroulante', icon: 'List', description: 'Choix parmi options' },
+  { value: 'textarea', label: 'Zone de texte', icon: 'AlignLeft', description: 'Texte multiligne' },
+  { value: 'switch', label: 'Interrupteur', icon: 'ToggleLeft', description: 'Oui/Non' },
+  { value: 'checkbox', label: 'Case à cocher', icon: 'CheckSquare', description: 'Cocher/Décocher' },
 ];
+
+const fieldTypeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  text: Type,
+  number: Hash,
+  email: Mail,
+  date: Calendar,
+  select: List,
+  textarea: AlignLeft,
+  switch: ToggleLeft,
+  checkbox: CheckSquare,
+};
 
 export function ConfigEditor({ componentType, config, onChange }: ConfigEditorProps) {
   const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null);
@@ -73,11 +92,12 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
     onChange({ ...config, columns });
   };
 
-  const handleAddField = () => {
+  const handleAddField = (fieldType: string = 'text') => {
+    const fieldTypeInfo = fieldTypes.find(t => t.value === fieldType);
     const newField: FieldConfig = {
       key: `field_${Date.now()}`,
-      label: 'Nouveau champ',
-      type: 'text',
+      label: fieldTypeInfo?.label || 'Nouveau champ',
+      type: fieldType as FieldConfig['type'],
       required: false,
     };
     onChange({
@@ -273,10 +293,37 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
         <Card>
           <CardHeader className="py-3 flex flex-row items-center justify-between">
             <CardTitle className="text-sm">Champs du formulaire</CardTitle>
-            <Button size="sm" variant="outline" onClick={handleAddField} className="h-7 text-xs">
-              <Plus className="h-3 w-3 mr-1" />
-              Ajouter
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-7 text-xs">
+                  <Plus className="h-3 w-3 mr-1" />
+                  Ajouter un champ
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs">
+                  <Sparkles className="h-3 w-3" />
+                  Type de champ
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {fieldTypes.map((type) => {
+                  const Icon = fieldTypeIcons[type.value] || Type;
+                  return (
+                    <DropdownMenuItem
+                      key={type.value}
+                      onClick={() => handleAddField(type.value)}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col">
+                        <span className="text-sm">{type.label}</span>
+                        <span className="text-xs text-muted-foreground">{type.description}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardHeader>
           <CardContent className="space-y-2">
             {(config.fields || []).length === 0 ? (
@@ -284,65 +331,78 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
                 Aucun champ configuré. Cliquez sur "Ajouter" pour commencer.
               </p>
             ) : (
-              (config.fields || []).map((field, index) => (
-                <div
-                  key={field.key}
-                  className="flex items-center gap-2 p-2 border rounded-md bg-muted/30"
-                >
-                  <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                  <Input
-                    value={field.key}
-                    onChange={(e) => handleUpdateField(index, { key: e.target.value })}
-                    placeholder="Clé"
-                    className="h-7 text-xs w-24"
-                  />
-                  <Input
-                    value={field.label}
-                    onChange={(e) => handleUpdateField(index, { label: e.target.value })}
-                    placeholder="Libellé"
-                    className="h-7 text-xs flex-1"
-                  />
-                  <Select
-                    value={field.type}
-                    onValueChange={(value) => handleUpdateField(index, { type: value as FieldConfig['type'] })}
+              (config.fields || []).map((field, index) => {
+                const FieldIcon = fieldTypeIcons[field.type] || Type;
+                return (
+                  <div
+                    key={field.key}
+                    className="flex items-center gap-2 p-2 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
                   >
-                    <SelectTrigger className="h-7 text-xs w-28">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fieldTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value} className="text-xs">
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-1">
-                    <Switch
-                      checked={field.required}
-                      onCheckedChange={(checked) => handleUpdateField(index, { required: checked })}
+                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-move flex-shrink-0" />
+                    <div className="flex items-center justify-center w-7 h-7 rounded bg-primary/10 flex-shrink-0">
+                      <FieldIcon className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <Input
+                      value={field.key}
+                      onChange={(e) => handleUpdateField(index, { key: e.target.value })}
+                      placeholder="Clé"
+                      className="h-7 text-xs w-20"
                     />
-                    <span className="text-xs text-muted-foreground">Requis</span>
+                    <Input
+                      value={field.label}
+                      onChange={(e) => handleUpdateField(index, { label: e.target.value })}
+                      placeholder="Libellé"
+                      className="h-7 text-xs flex-1"
+                    />
+                    <Select
+                      value={field.type}
+                      onValueChange={(value) => handleUpdateField(index, { type: value as FieldConfig['type'] })}
+                    >
+                      <SelectTrigger className="h-7 text-xs w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fieldTypes.map((type) => {
+                          const TypeIcon = fieldTypeIcons[type.value] || Type;
+                          return (
+                            <SelectItem key={type.value} value={type.value} className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <TypeIcon className="h-3 w-3" />
+                                {type.label}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Switch
+                        checked={field.required}
+                        onCheckedChange={(checked) => handleUpdateField(index, { required: checked })}
+                      />
+                      <span className="text-xs text-muted-foreground">Requis</span>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 flex-shrink-0"
+                      onClick={() => handleOpenFieldOptions(index)}
+                      title="Configurer les options avancées"
+                    >
+                      <Settings2 className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 flex-shrink-0 hover:bg-destructive/10"
+                      onClick={() => handleRemoveField(index)}
+                      title="Supprimer ce champ"
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => handleOpenFieldOptions(index)}
-                    title="Configurer les options"
-                  >
-                    <Settings2 className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => handleRemoveField(index)}
-                  >
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                </div>
-              ))
+                );
+              })
             )}
           </CardContent>
         </Card>
