@@ -1,17 +1,25 @@
 import { useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, GripVertical, Settings2, Type, Hash, Mail, Calendar, List, AlignLeft, ToggleLeft, CheckSquare, Sparkles } from 'lucide-react';
+import { Plus, Sparkles, Type, Hash, Mail, Calendar, List, AlignLeft, ToggleLeft, CheckSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,20 +30,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ColumnConfig, FieldConfig, ComponentConfig } from '@/types/componentConfig';
 import { FieldOptionsModal } from './FieldOptionsModal';
+import { SortableFieldItem } from './SortableFieldItem';
+import { SortableColumnItem } from './SortableColumnItem';
 
 interface ConfigEditorProps {
   componentType: 'form' | 'table' | 'list' | 'dashboard' | 'settings';
   config: ComponentConfig;
   onChange: (config: ComponentConfig) => void;
 }
-
-const columnTypes = [
-  { value: 'text', label: 'Texte' },
-  { value: 'number', label: 'Nombre' },
-  { value: 'date', label: 'Date' },
-  { value: 'badge', label: 'Badge' },
-  { value: 'boolean', label: 'Booléen' },
-];
 
 const fieldTypes = [
   { value: 'text', label: 'Texte', icon: 'Type', description: 'Champ texte simple' },
@@ -62,6 +64,17 @@ const fieldTypeIcons: Record<string, React.ComponentType<{ className?: string }>
 export function ConfigEditor({ componentType, config, onChange }: ConfigEditorProps) {
   const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null);
   const [fieldOptionsOpen, setFieldOptionsOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const isTableOrList = componentType === 'table' || componentType === 'list';
   const isForm = componentType === 'form';
@@ -92,6 +105,19 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
     onChange({ ...config, columns });
   };
 
+  const handleColumnDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const columns = config.columns || [];
+      const oldIndex = columns.findIndex((col) => col.key === active.id);
+      const newIndex = columns.findIndex((col) => col.key === over.id);
+      onChange({
+        ...config,
+        columns: arrayMove(columns, oldIndex, newIndex),
+      });
+    }
+  };
+
   const handleAddField = (fieldType: string = 'text') => {
     const fieldTypeInfo = fieldTypes.find(t => t.value === fieldType);
     const newField: FieldConfig = {
@@ -116,6 +142,19 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
     const fields = [...(config.fields || [])];
     fields.splice(index, 1);
     onChange({ ...config, fields });
+  };
+
+  const handleFieldDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const fields = config.fields || [];
+      const oldIndex = fields.findIndex((field) => field.key === active.id);
+      const newIndex = fields.findIndex((field) => field.key === over.id);
+      onChange({
+        ...config,
+        fields: arrayMove(fields, oldIndex, newIndex),
+      });
+    }
   };
 
   const handleOpenFieldOptions = (index: number) => {
@@ -233,56 +272,26 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
                 Aucune colonne configurée. Cliquez sur "Ajouter" pour commencer.
               </p>
             ) : (
-              (config.columns || []).map((column, index) => (
-                <div
-                  key={column.key}
-                  className="flex items-center gap-2 p-2 border rounded-md bg-muted/30"
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleColumnDragEnd}
+              >
+                <SortableContext
+                  items={(config.columns || []).map((col) => col.key)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                  <Input
-                    value={column.key}
-                    onChange={(e) => handleUpdateColumn(index, { key: e.target.value })}
-                    placeholder="Clé"
-                    className="h-7 text-xs w-24"
-                  />
-                  <Input
-                    value={column.label}
-                    onChange={(e) => handleUpdateColumn(index, { label: e.target.value })}
-                    placeholder="Libellé"
-                    className="h-7 text-xs flex-1"
-                  />
-                  <Select
-                    value={column.type}
-                    onValueChange={(value) => handleUpdateColumn(index, { type: value as ColumnConfig['type'] })}
-                  >
-                    <SelectTrigger className="h-7 text-xs w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {columnTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value} className="text-xs">
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-1">
-                    <Switch
-                      checked={column.sortable}
-                      onCheckedChange={(checked) => handleUpdateColumn(index, { sortable: checked })}
+                  {(config.columns || []).map((column, index) => (
+                    <SortableColumnItem
+                      key={column.key}
+                      column={column}
+                      index={index}
+                      onUpdate={handleUpdateColumn}
+                      onRemove={handleRemoveColumn}
                     />
-                    <span className="text-xs text-muted-foreground">Tri</span>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => handleRemoveColumn(index)}
-                  >
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                </div>
-              ))
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
           </CardContent>
         </Card>
@@ -331,78 +340,27 @@ export function ConfigEditor({ componentType, config, onChange }: ConfigEditorPr
                 Aucun champ configuré. Cliquez sur "Ajouter" pour commencer.
               </p>
             ) : (
-              (config.fields || []).map((field, index) => {
-                const FieldIcon = fieldTypeIcons[field.type] || Type;
-                return (
-                  <div
-                    key={field.key}
-                    className="flex items-center gap-2 p-2 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-move flex-shrink-0" />
-                    <div className="flex items-center justify-center w-7 h-7 rounded bg-primary/10 flex-shrink-0">
-                      <FieldIcon className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <Input
-                      value={field.key}
-                      onChange={(e) => handleUpdateField(index, { key: e.target.value })}
-                      placeholder="Clé"
-                      className="h-7 text-xs w-20"
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleFieldDragEnd}
+              >
+                <SortableContext
+                  items={(config.fields || []).map((field) => field.key)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {(config.fields || []).map((field, index) => (
+                    <SortableFieldItem
+                      key={field.key}
+                      field={field}
+                      index={index}
+                      onUpdate={handleUpdateField}
+                      onRemove={handleRemoveField}
+                      onOpenOptions={handleOpenFieldOptions}
                     />
-                    <Input
-                      value={field.label}
-                      onChange={(e) => handleUpdateField(index, { label: e.target.value })}
-                      placeholder="Libellé"
-                      className="h-7 text-xs flex-1"
-                    />
-                    <Select
-                      value={field.type}
-                      onValueChange={(value) => handleUpdateField(index, { type: value as FieldConfig['type'] })}
-                    >
-                      <SelectTrigger className="h-7 text-xs w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {fieldTypes.map((type) => {
-                          const TypeIcon = fieldTypeIcons[type.value] || Type;
-                          return (
-                            <SelectItem key={type.value} value={type.value} className="text-xs">
-                              <div className="flex items-center gap-2">
-                                <TypeIcon className="h-3 w-3" />
-                                {type.label}
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <Switch
-                        checked={field.required}
-                        onCheckedChange={(checked) => handleUpdateField(index, { required: checked })}
-                      />
-                      <span className="text-xs text-muted-foreground">Requis</span>
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 flex-shrink-0"
-                      onClick={() => handleOpenFieldOptions(index)}
-                      title="Configurer les options avancées"
-                    >
-                      <Settings2 className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 flex-shrink-0 hover:bg-destructive/10"
-                      onClick={() => handleRemoveField(index)}
-                      title="Supprimer ce champ"
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  </div>
-                );
-              })
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
           </CardContent>
         </Card>
